@@ -1,0 +1,49 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@danmarshall/deckgl-typings": "^4.9.28",
+    "@deck.gl/core": "^9.3.1",
+    "@deck.gl/geo-layers": "^9.3.1",
+    "@deck.gl/layers": "^9.3.1",
+    "@sqlrooms/duckdb": "^0.28.0",
+    "@sqlrooms/kepler": "^0.28.0",
+    "@sqlrooms/room-shell": "^0.28.0",
+    "@sqlrooms/ui": "^0.28.0",
+    "apache-arrow": "^21.1.0",
+    "clsx": "^2.1.1",
+    "deck.gl": "^9.3.1",
+    "kepler.gl": "^3.3.0-alpha.0",
+    "lucide-react": "^1.14.0",
+    "mapbox-gl": "^3.23.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-redux": "^9.2.0",
+    "redux": "^5.0.1",
+    "styled-components": "^6.4.1",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vite": "^8.0.10"
+  }
+}
