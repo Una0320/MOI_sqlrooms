@@ -19,6 +19,7 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "@deck.gl/core/src/*": [
         "./node_modules/@deck.gl/core/typed/*",
         "./node_modules/@deck.gl/core/dist/*",
