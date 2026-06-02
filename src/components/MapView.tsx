@@ -1,13 +1,16 @@
 import { MapboxOverlay as DeckOverlay, MapboxOverlayProps } from '@deck.gl/mapbox';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { FC, useEffect, useMemo, useRef } from 'react';
+import { FC, useEffect, useMemo } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
+import type * as arrow from 'apache-arrow';
 
 import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE } from '../constants/map';
+import { LAYER_IDS } from '../constants/layers';
 import { ArrowTripsLayer } from './custom_layer/arrowTripsLayer/ArrowTripsLayer';
 import { ArrowLoader, ArrowWorkerLoader } from '@loaders.gl/arrow';
 import { useMapStore } from '../zustand/useMapStore';
 import { useShallow } from '@sqlrooms/room-shell';
+import { useHeatmapLayer } from '../hooks/useHeatmapLayer';
 
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -18,19 +21,20 @@ function DeckGLOverlay(props: MapboxOverlayProps) {
   return null;
 }
 
-export const MapView: FC = () => {
-  const { time, setTime, isPlaying, selectedModes } = useMapStore(
+export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
+  const { time, setTime, isPlaying, selectedModes, tripsVisible } = useMapStore(
     useShallow((state) => ({
       time: state.time,
       setTime: state.setTime,
       isPlaying: state.isPlaying,
       selectedModes: state.selectedModes,
+      tripsVisible: state.visibleLayers[LAYER_IDS.TRIPS] ?? true,
     }))
   );
-  
-  // 🛠️ 修復 Error 2554: useRef 必須給予初始值 0 或 null
-  const animationFrameRef = useRef<number>(0); 
 
+  // 同份 arrowTable 給 heatmap;未來若資料來源分流,改在 hook 內 useSql。
+  const heatmapLayers = useHeatmapLayer(arrowTable);
+  
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
     if (!isPlaying) return;
@@ -72,16 +76,16 @@ export const MapView: FC = () => {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, setTime]);
 
-  const layers = [];
-  
+  const layers: any[] = [];
+
   const computedBitmask = useMemo(() => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 🌟 安全地從 window 取回資料，這能完美避開所有 HMR 與 Store Proxy 的報錯
-  const arrowTable = (window as any).globalArrowTable;
+  // 順序:heatmap 在下 → trips 在上(後 push 的畫在上面)
+  layers.push(...heatmapLayers);
 
-  if (arrowTable) {
+  if (arrowTable && tripsVisible) {
     layers.push(
       new ArrowTripsLayer({
         id: 'trips-layer',

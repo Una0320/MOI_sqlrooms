@@ -5,7 +5,7 @@
  */
 
 
-import { AGENT_MODE_TRIP_COLORS } from '@/constants';
+import { AGENT_MODE_TRIP_COLORS } from '@/constants/map';
 import {
   CompositeLayer,
   CompositeLayerProps,
@@ -123,11 +123,13 @@ export class ArrowODArcLayer<ExtraProps extends object = object> extends Composi
     const layers: ArcLayer<any>[] = []
 
     for(let recordBatchIdx=0; recordBatchIdx<table.batches.length; recordBatchIdx++){
-      const pathData = table.batches[recordBatchIdx].getChild(getPathColumn)
-      const timestampData = table.batches[recordBatchIdx].getChild(getTimestampColumn)
-      const modesData = table.batches[recordBatchIdx].getChild(getModeColumn)
+      const pathData = table.batches[recordBatchIdx].getChild(getPathColumn!)
+      const timestampData = table.batches[recordBatchIdx].getChild(getTimestampColumn!)
+      const modesData = table.batches[recordBatchIdx].getChild(getModeColumn!)
       const batchTownFilterMask = townFilterMask?.[recordBatchIdx]
-      
+
+      if (!pathData || !timestampData || !modesData) continue;
+
       // @ts-expect-error
       const batchOffset = pathData._offsets[recordBatchIdx]
       // const pathValues = pathData.data[0].children[0].values
@@ -151,7 +153,7 @@ export class ArrowODArcLayer<ExtraProps extends object = object> extends Composi
         continue
       }
 
-      const props: ArcLayerProps<any> = {
+      const props: ArcLayerProps<any> & { tableOffsets?: unknown } = {
         ...ourDefaultProps,
         ...otherProps,
         tableOffsets,

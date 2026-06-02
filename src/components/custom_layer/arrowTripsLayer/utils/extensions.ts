@@ -42,7 +42,7 @@ export class ModeObjectPropsExtension extends LayerExtension {
     };
   }
 
-  initializeState(this, context, extension) {
+  initializeState(this: any) {
     const attributeManager = this.getAttributeManager();
     
     if (attributeManager) {
@@ -64,8 +64,8 @@ export class ModeObjectPropsExtension extends LayerExtension {
   }
 
 
-  draw(this, params, extension) {
-    const { 
+  draw(this: any) {
+    const {
       filterBitMask = [], 
       filterEnabled = true, 
       colorMap = [],

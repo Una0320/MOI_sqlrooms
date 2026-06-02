@@ -1,33 +1,42 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMapStore } from "@/zustand/useMapStore";
-import { useDuckDBTable } from "@/duckdb/useDuckDBTable";
+import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
+import { DATA_URL } from "@/constants/data";
 
-// 🌟 對準你的本地端 API
-const fileName = import.meta.env.VITE_DUCKDB_FILE_NAME || 'abm_format_outcome_20000.parquet';
-const baseUrl = import.meta.env.VITE_DUCKDB_CONNECTION_STRING || 'http://localhost:7780/data';
-const url = new URL(fileName, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/').href;
+const BIN_SIZE = 60;            // SQL 粒度:60 秒一格(夠細,JS 端再做視覺重取樣)
+const HARD_MAX_SEC = 86400;     // 顯示上限:24:00:00(超過的資料不入 bar)
+const step = 10 * 60;           // 滑桿的吸附步長:10 分鐘
+const MAX_BARS = 50;            // 視覺上希望 Timebar 最多畫幾條 bar
 
-const BIN_SIZE = 60;
-const step = 10 * 60; // 10 mins
-
+// 動態 bins:起點 = 資料真正最小的 timestamp,終點 = MIN(資料 max, 24h)
 const query = `
   WITH agent_ranges AS (
-    SELECT 
-      list_min(timestamps) as t_start,
-      list_max(timestamps) as t_end
-    FROM '${fileName}'
+    SELECT
+      list_min(timestamps) AS t_start,
+      list_max(timestamps) AS t_end
+    FROM read_parquet('${DATA_URL}')
+  ),
+  bounds AS (
+    SELECT
+      CAST(MIN(t_start) AS BIGINT) AS data_min,
+      LEAST(CAST(MAX(t_end) AS BIGINT), ${HARD_MAX_SEC}) AS data_max
+    FROM agent_ranges
   ),
   bins AS (
-    SELECT unnest(generate_series(0, 86400, ${BIN_SIZE})) as bin_start
+    SELECT unnest(generate_series(
+      (SELECT data_min FROM bounds),
+      (SELECT data_max FROM bounds),
+      ${BIN_SIZE}
+    )) AS bin_start
   )
-  SELECT 
-    b.bin_start as time_bin,
-    COUNT(*) as count
+  SELECT
+    b.bin_start AS time_bin,
+    COUNT(*) AS count
   FROM bins b
   CROSS JOIN agent_ranges a
-  WHERE 
-    a.t_end >= b.bin_start AND 
+  WHERE
+    a.t_end >= b.bin_start AND
     a.t_start < (b.bin_start + ${BIN_SIZE})
   GROUP BY b.bin_start
   ORDER BY b.bin_start ASC;
@@ -60,18 +69,13 @@ export const TimeLine = () => {
   const lastValueRef = useRef(timeRange[0]);
   const animationFrameRef = useRef<number | null>(null);
 
-  const { data: duckData } = useDuckDBTable(fileName, url, query);
+  const { data: queryResult } = useSql<{ time_bin: number; count: number }>({ query });
+  const duckData = queryResult?.arrowTable;
 
   const histogramBars = useMemo(() => {
     if (!duckData) return [];
 
-    // 支援 Array 或 Arrow Table 的萬用解析法
-    let rows: any[] = [];
-    if (Array.isArray(duckData)) {
-      rows = duckData;
-    } else if (typeof (duckData as any).numRows !== 'undefined') {
-      rows = (duckData as any).toArray().map((r: any) => r.toJSON());
-    }
+    const rows: any[] = duckData.toArray().map((r: any) => r.toJSON());
 
     if (rows.length === 0) return [];
 
@@ -79,10 +83,9 @@ export const TimeLine = () => {
 
     let currentBinSize = BIN_SIZE;
     let totalBars = Math.ceil((endSec - startSec) / currentBinSize);
-    
-    const MAX_BARS = 250;
+
     if (totalBars > MAX_BARS) {
-      currentBinSize = (endSec - startSec) / MAX_BARS; 
+      currentBinSize = (endSec - startSec) / MAX_BARS;
       totalBars = MAX_BARS;
     }
 
@@ -111,27 +114,24 @@ export const TimeLine = () => {
   const widthPct = getPercent(timeRange[1]) - leftPct;
 
   useEffect(() => {
-    // 萬用取值器：處理 Array 或 Arrow Table
     let minTime = 0;
     let maxTime = 0;
     let hasData = false;
 
-    if (Array.isArray(duckData) && duckData.length > 0) {
-      minTime = Number(duckData[0].time_bin);
-      maxTime = Number(duckData[duckData.length - 1].time_bin);
-      hasData = true;
-    } else if (duckData && typeof (duckData as any).numRows !== 'undefined' && (duckData as any).numRows > 0) {
-      const timeBinCol = (duckData as any).getChild('time_bin');
+    if (duckData && duckData.numRows > 0) {
+      const timeBinCol = duckData.getChild('time_bin');
       if (timeBinCol) {
         minTime = Number(timeBinCol.get(0));
-        maxTime = Number(timeBinCol.get((duckData as any).numRows - 1));
+        maxTime = Number(timeBinCol.get(duckData.numRows - 1));
         hasData = true;
       }
     }
 
     if (hasData) {
       // 🌟 1. 設定絕對資料邊界 (View) 與 預設顯示視窗 (Display)
-      const adjustedMax = maxTime + BIN_SIZE;
+      //   maxTime 已經由 SQL 端 LEAST(..., 86400) 保證 ≤ HARD_MAX_SEC,
+      //   再加上 BIN_SIZE 緩衝後仍可能跨過 86400,所以這裡再 clamp 一次。
+      const adjustedMax = Math.min(maxTime + BIN_SIZE, HARD_MAX_SEC);
       setViewTimeRange([minTime, adjustedMax]);
       setDisplayTimeRange([minTime, adjustedMax]); // 讓視窗一開始看見全貌
 

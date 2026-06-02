@@ -6,7 +6,6 @@ import {
   Layer,
   LayersList
 } from '@deck.gl/core';
-import { DataFilterExtension, MaskExtension } from '@deck.gl/extensions';
 import type { TripsLayerProps } from '@deck.gl/geo-layers';
 import { PathLayer } from '@deck.gl/layers';
 import * as arrow from 'apache-arrow';
@@ -238,11 +237,10 @@ export class ArrowPathLayer<ExtraProps extends object = object> extends Composit
           }
         },
 
-        extensions: [ArrowPathLayer.dataFilterExtension, new MaskExtension()],
+        extensions: [ArrowPathLayer.dataFilterExtension],
         filterEnabled: true,
         filterRange: timeRange,
         filterCategories: mappedFilterCategories,
-        maskId: "geofence",
 
         widthMinPixels: 1,
       };

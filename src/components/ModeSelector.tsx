@@ -7,7 +7,7 @@ export const ModeSelector = () => {
   const toggleMode = useMapStore((state) => state.toggleMode); // 直接訂閱 toggleMode 函數
 
   return (
-    <div className="absolute top-5 right-5 z-10 bg-[#2B2B38]/90 border border-slate-700 p-4 rounded-lg text-white flex flex-col gap-3 font-mono shadow-xl backdrop-blur-sm">
+    <div className="bg-[#2B2B38]/90 border border-slate-700 p-4 rounded-lg text-white flex flex-col gap-3 font-mono shadow-xl backdrop-blur-sm">
       <span className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-700 pb-2">
         Mobility Modes
       </span>

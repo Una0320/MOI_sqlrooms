@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { INITIAL_SELETED_MOBILITY_MODES_BITS } from '../constants/map';
+import { INITIAL_VISIBLE_LAYERS, type LayerId } from '../constants/layers';
 /**
 變數名稱,     代表意義,             範例 (秒),        視覺表現
 ViewRange,   數據的絕對邊界,        "[0, 86400]",    整個時間軸的總長度
@@ -15,7 +16,8 @@ interface MapState {
   isPlaying: boolean;
   timeScale: number;
   selectedModes: number[];
-  
+  visibleLayers: Record<LayerId, boolean>;
+
   setTime: (t: number) => void;
   setTimeRange: (range: [number, number]) => void;
   togglePlay: () => void;
@@ -24,6 +26,7 @@ interface MapState {
   setIsPlaying: (playing: boolean) => void;
   setDisplayTimeRange: (range: [number, number]) => void;
   setViewTimeRange: (range: [number, number]) => void;
+  toggleLayer: (id: LayerId) => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -34,6 +37,7 @@ export const useMapStore = create<MapState>((set) => ({
   isPlaying: false,
   timeScale: 30, // 預設 30 倍速
   selectedModes: INITIAL_SELETED_MOBILITY_MODES_BITS,
+  visibleLayers: INITIAL_VISIBLE_LAYERS,
 
   setTime: (t) => set({ time: t }),
   setTimeRange: (range) => set({ timeRange: range }),
@@ -49,5 +53,8 @@ export const useMapStore = create<MapState>((set) => ({
   }),
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setDisplayTimeRange: (range) => set({ displayTimeRange: range }),
-  setViewTimeRange: (range) => set({ viewTimeRange: range })
+  setViewTimeRange: (range) => set({ viewTimeRange: range }),
+  toggleLayer: (id) => set((state) => ({
+    visibleLayers: { ...state.visibleLayers, [id]: !state.visibleLayers[id] },
+  })),
 }));

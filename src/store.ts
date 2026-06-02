@@ -5,7 +5,9 @@ import {
   LayoutTypes,
   RoomShellSliceState,
 } from '@sqlrooms/room-shell';
+import {DatabaseIcon} from 'lucide-react';
 import {MainView} from './components/MainView';
+import {DataPanel} from './components/DataPanel';
 
 // 只保留最基礎的狀態
 export type RoomState = RoomShellSliceState;
@@ -28,6 +30,12 @@ export const {roomStore, useRoomStore} = createRoomStore<RoomState>(
             icon: () => null,
             component: MainView,
             placement: 'main',
+          },
+          data: {
+            title: 'Data',
+            icon: DatabaseIcon,
+            component: DataPanel,
+            placement: 'sidebar',
           },
         },
       },

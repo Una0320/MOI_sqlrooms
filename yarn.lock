@@ -2939,13 +2939,6 @@
   dependencies:
     undici-types "~6.21.0"
 
-"@types/node@^24.0.3":
-  version "24.12.2"
-  resolved "https://registry.npmjs.org/@types/node/-/node-24.12.2.tgz"
-  integrity sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g==
-  dependencies:
-    undici-types "~7.16.0"
-
 "@types/offscreencanvas@^2019.6.4":
   version "2019.7.3"
   resolved "https://registry.npmjs.org/@types/offscreencanvas/-/offscreencanvas-2019.7.3.tgz"
@@ -3191,7 +3184,7 @@ ansi-styles@^4.0.0, ansi-styles@^4.1.0:
   dependencies:
     color-convert "^2.0.1"
 
-apache-arrow@17.0.0, apache-arrow@^17.0.0:
+apache-arrow@17.0.0, "apache-arrow@>= 17.0.0", apache-arrow@^17.0.0:
   version "17.0.0"
   resolved "https://registry.npmjs.org/apache-arrow/-/apache-arrow-17.0.0.tgz"
   integrity sha512-X0p7auzdnGuhYMVKYINdQssS4EcKec9TCXyez/qtJt32DrIMGbzqiaMiQ0X6fQlQpw8Fl0Qygcv4dfRAr5Gu9Q==
@@ -3203,21 +3196,6 @@ apache-arrow@17.0.0, apache-arrow@^17.0.0:
     command-line-args "^5.2.1"
     command-line-usage "^7.0.1"
     flatbuffers "^24.3.25"
-    json-bignum "^0.0.3"
-    tslib "^2.6.2"
-
-"apache-arrow@>= 17.0.0", apache-arrow@^21.1.0:
-  version "21.1.0"
-  resolved "https://registry.npmjs.org/apache-arrow/-/apache-arrow-21.1.0.tgz"
-  integrity sha512-kQrYLxhC+NTVVZ4CCzGF6L/uPVOzJmD1T3XgbiUnP7oTeVFOFgEUu6IKNwCDkpFoBVqDKQivlX4RUFqqnWFlEA==
-  dependencies:
-    "@swc/helpers" "^0.5.11"
-    "@types/command-line-args" "^5.2.3"
-    "@types/command-line-usage" "^5.0.4"
-    "@types/node" "^24.0.3"
-    command-line-args "^6.0.1"
-    command-line-usage "^7.0.1"
-    flatbuffers "^25.1.24"
     json-bignum "^0.0.3"
     tslib "^2.6.2"
 
@@ -3250,7 +3228,7 @@ array-back@^3.0.1, array-back@^3.1.0:
   resolved "https://registry.npmjs.org/array-back/-/array-back-3.1.0.tgz"
   integrity sha512-TkuxA4UCOvxuDK6NZYXCalszEzj+TLszyASooky+i742l9TqsOdYCMJJupxRic61hwquNtppB3hgcuq9SVSH1Q==
 
-array-back@^6.2.2, array-back@^6.2.3:
+array-back@^6.2.2:
   version "6.2.3"
   resolved "https://registry.npmjs.org/array-back/-/array-back-6.2.3.tgz"
   integrity sha512-SGDvmg6QTYiTxCBkYVmThcoa67uLl35pyzRHdpCGBOcqFy6BtwnphoFPk7LhJshD+Yk1Kt35WGWeZPTgwR4Fhw==
@@ -3554,16 +3532,6 @@ command-line-args@^5.2.1:
     find-replace "^3.0.0"
     lodash.camelcase "^4.3.0"
     typical "^4.0.0"
-
-command-line-args@^6.0.1:
-  version "6.0.2"
-  resolved "https://registry.npmjs.org/command-line-args/-/command-line-args-6.0.2.tgz"
-  integrity sha512-AIjYVxrV9X752LmPDLbVYv8aMCuHPSLZJXEo2qo/xJfv+NYhaZ4sMSF01rM+gHPaMgvPM0l5D/F+Qx+i2WfSmQ==
-  dependencies:
-    array-back "^6.2.3"
-    find-replace "^5.0.2"
-    lodash.camelcase "^4.3.0"
-    typical "^7.3.0"
 
 command-line-usage@^7.0.1:
   version "7.0.4"
@@ -4387,11 +4355,6 @@ find-replace@^3.0.0:
   dependencies:
     array-back "^3.0.1"
 
-find-replace@^5.0.2:
-  version "5.0.2"
-  resolved "https://registry.npmjs.org/find-replace/-/find-replace-5.0.2.tgz"
-  integrity sha512-Y45BAiE3mz2QsrN2fb5QEtO4qb44NcS7en/0y9PEVsg351HsLeVclP8QPMH79Le9sH3rs5RSwJu99W0WPZO43Q==
-
 find-up@^5.0.0:
   version "5.0.0"
   resolved "https://registry.npmjs.org/find-up/-/find-up-5.0.0.tgz"
@@ -4412,11 +4375,6 @@ flatbuffers@^24.3.25:
   version "24.12.23"
   resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-24.12.23.tgz"
   integrity sha512-dLVCAISd5mhls514keQzmEG6QHmUUsNuWsb4tFafIUwvvgDjXhtfAYSKOzt5SWOy+qByV5pbsDZ+Vb7HUOBEdA==
-
-flatbuffers@^25.1.24:
-  version "25.9.23"
-  resolved "https://registry.npmjs.org/flatbuffers/-/flatbuffers-25.9.23.tgz"
-  integrity sha512-MI1qs7Lo4Syw0EOzUl0xjs2lsoeqFku44KpngfIduHBYvzm8h2+7K8YMQh1JtVVVrUvhLpNwqVi4DERegUJhPQ==
 
 flatted@^3.2.9:
   version "3.3.4"
@@ -6690,11 +6648,6 @@ undici-types@~6.21.0:
   version "6.21.0"
   resolved "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz"
   integrity sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==
-
-undici-types@~7.16.0:
-  version "7.16.0"
-  resolved "https://registry.npmjs.org/undici-types/-/undici-types-7.16.0.tgz"
-  integrity sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==
 
 undici-types@~7.19.0:
   version "7.19.2"
