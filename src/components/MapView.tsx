@@ -1,6 +1,6 @@
 import { MapboxOverlay as DeckOverlay, MapboxOverlayProps } from '@deck.gl/mapbox';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
 import type * as arrow from 'apache-arrow';
 
@@ -12,6 +12,7 @@ import { useMapStore } from '../zustand/useMapStore';
 import { useShallow } from '@sqlrooms/room-shell';
 import { useHeatmapLayer } from '../hooks/useHeatmapLayer';
 import { useODArcLayer } from '../hooks/useODArcLayer';
+import { usePointsLayer, ZOOM_THRESHOLD } from '../hooks/usePointsLayer';
 
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -34,6 +35,11 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     }))
   );
 
+  const [currentZoom, setCurrentZoom] = useState(INITIAL_VIEW_STATE.zoom);
+  const handleMove = useCallback((e: { viewState: { zoom: number } }) => {
+    setCurrentZoom(e.viewState.zoom);
+  }, []);
+
   // 加這段
   const [debouncedTimeRange, setDebouncedTimeRange] = useState<[number, number]>(timeRange);
   useEffect(() => {
@@ -42,9 +48,10 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return () => clearTimeout(id);
   }, [timeRange, isPlaying]);
 
-  // 同份 arrowTable 給 heatmap;未來若資料來源分流,改在 hook 內 useSql。
+  // 同份 arrowTable 給 heatmap / points;未來若資料來源分流,改在 hook 內 useSql。
   const heatmapLayers = useHeatmapLayer(arrowTable, debouncedTimeRange);
   const odArcLayer = useODArcLayer();
+  const pointsLayers = usePointsLayer(arrowTable, currentZoom);
   
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
@@ -93,11 +100,12 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:heatmap → od-arc → trips（後 push 的畫在上面）
+  // 順序:heatmap → od-arc → trips → points（後 push 的畫在上面）
   layers.push(...heatmapLayers);
   if (odArcLayer) layers.push(odArcLayer);
+  layers.push(...pointsLayers);
 
-  if (arrowTable && tripsVisible) {
+  if (arrowTable && tripsVisible && currentZoom <= ZOOM_THRESHOLD) {
     layers.push(
       new ArrowTripsLayer({
         id: 'trips-layer',
@@ -132,7 +140,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
         Time: {Math.floor(time)}
       </div>
 
-      <Map initialViewState={INITIAL_VIEW_STATE} mapStyle={MAP_STYLE}>
+      <Map initialViewState={INITIAL_VIEW_STATE} mapStyle={MAP_STYLE} onMove={handleMove}>
         <DeckGLOverlay layers={layers} />
         <NavigationControl position="top-left" />
       </Map>
