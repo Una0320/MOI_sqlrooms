@@ -1,6 +1,6 @@
 import { MapboxOverlay as DeckOverlay, MapboxOverlayProps } from '@deck.gl/mapbox';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { FC, useEffect, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
 import type * as arrow from 'apache-arrow';
 
@@ -11,6 +11,7 @@ import { ArrowLoader, ArrowWorkerLoader } from '@loaders.gl/arrow';
 import { useMapStore } from '../zustand/useMapStore';
 import { useShallow } from '@sqlrooms/room-shell';
 import { useHeatmapLayer } from '../hooks/useHeatmapLayer';
+import { useODArcLayer } from '../hooks/useODArcLayer';
 
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -22,18 +23,28 @@ function DeckGLOverlay(props: MapboxOverlayProps) {
 }
 
 export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
-  const { time, setTime, isPlaying, selectedModes, tripsVisible } = useMapStore(
+  const { time, setTime, isPlaying, selectedModes, tripsVisible, timeRange } = useMapStore(
     useShallow((state) => ({
       time: state.time,
       setTime: state.setTime,
       isPlaying: state.isPlaying,
       selectedModes: state.selectedModes,
       tripsVisible: state.visibleLayers[LAYER_IDS.TRIPS] ?? true,
+      timeRange: state.timeRange,
     }))
   );
 
+  // 加這段
+  const [debouncedTimeRange, setDebouncedTimeRange] = useState<[number, number]>(timeRange);
+  useEffect(() => {
+    if (isPlaying) return; // 播放中凍結
+    const id = setTimeout(() => setDebouncedTimeRange(timeRange), 300);
+    return () => clearTimeout(id);
+  }, [timeRange, isPlaying]);
+
   // 同份 arrowTable 給 heatmap;未來若資料來源分流,改在 hook 內 useSql。
-  const heatmapLayers = useHeatmapLayer(arrowTable);
+  const heatmapLayers = useHeatmapLayer(arrowTable, debouncedTimeRange);
+  const odArcLayer = useODArcLayer();
   
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
@@ -82,8 +93,9 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:heatmap 在下 → trips 在上(後 push 的畫在上面)
+  // 順序:heatmap → od-arc → trips（後 push 的畫在上面）
   layers.push(...heatmapLayers);
+  if (odArcLayer) layers.push(odArcLayer);
 
   if (arrowTable && tripsVisible) {
     layers.push(

@@ -118,6 +118,10 @@ export class ArrowODArcLayer<ExtraProps extends object = object> extends Composi
     // 如果上層有傳入的話
     const [accessors, otherProps] = extractAccessorsFromProps(this.props, [])
 
+    // DataFilterExtension 底層用 (1 << categoryId) 做 GPU 位元運算，
+    // 必須將 bitmask (1,2,4,8,16) 壓回連續 index (0,1,2,3,4)，同 ArrowPathLayer。
+    const mappedFilterCategories = filterMode.map(cat => (cat > 0 ? Math.floor(Math.log2(cat)) : -1));
+
     // 計算整個 table (所有 batch) 的累計偏移量，主要用於 picking
     const tableOffsets = computeChunkOffsets(table.data)
     const layers: ArcLayer<any>[] = []
@@ -141,7 +145,13 @@ export class ArrowODArcLayer<ExtraProps extends object = object> extends Composi
 
       // timestamp 和 mode 現在是純數字陣列了，直接讀取 values！
       const timestampValues = timestampData.data[0].values; 
-      const modeValues = modesData.data[0].values;
+      const rawModeValues = modesData.data[0].values;
+      // bitmask (1,2,4,8,16) → log2 index (0,1,2,3,4)，與 mappedFilterCategories 對齊
+      const modeValues = new Uint8Array(rawModeValues.length);
+      for (let i = 0; i < rawModeValues.length; i++) {
+        const v = (rawModeValues as Uint8Array)[i];
+        modeValues[i] = v > 0 ? Math.floor(Math.log2(v)) : 255;
+      }
       const filteredPathValues = filterValuesByMask(pathValues, 4, batchTownFilterMask)
       const filteredTimestampValues = filterValuesByMask(timestampValues, 1, batchTownFilterMask)
       const filteredModeValues = filterValuesByMask(modeValues, 1, batchTownFilterMask)
@@ -193,17 +203,18 @@ export class ArrowODArcLayer<ExtraProps extends object = object> extends Composi
         },
         // @ts-ignore
         getSourceColor: ((_, item) => {
+          // getColorCode 已是 log2 index (0-4)，直接查表
           // @ts-ignore
-          return AGENT_MODE_TRIP_COLORS[Math.log2(item.data.attributes.getColorCode[item.index])]
+          return AGENT_MODE_TRIP_COLORS[item.data.attributes.getColorCode[item.index]]
         }),
         // @ts-ignore
         getTargetColor: ((_, item) =>{
           // @ts-ignore
-          return AGENT_MODE_TRIP_COLORS[Math.log2(item.data.attributes.getColorCode[item.index])]
+          return AGENT_MODE_TRIP_COLORS[item.data.attributes.getColorCode[item.index]]
         }),
         extensions: mergeExtensions(otherProps.extensions),
         filterRange: timeRange,
-        filterCategories: filterMode,
+        filterCategories: mappedFilterCategories,
         getWidth: 2,
         getHeight: 1,
       }

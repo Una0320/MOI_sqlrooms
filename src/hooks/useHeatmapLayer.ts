@@ -18,17 +18,16 @@ import { useMapStore } from '../zustand/useMapStore';
 //  只回傳 Layer[],呼叫方(MapView)不會受影響。
 // ============================================================================
 
-export const useHeatmapLayer = (arrowTable: arrow.Table | undefined) => {
-  const { selectedModes, timeRange, visible } = useMapStore(
+export const useHeatmapLayer = (arrowTable: arrow.Table | undefined, debouncedTimeRange: [number, number]) => {
+  const { selectedModes, visible } = useMapStore(
     useShallow((s) => ({
       selectedModes: s.selectedModes,
-      timeRange: s.timeRange,
       visible: s.visibleLayers[LAYER_IDS.HEATMAP] ?? false,
     })),
   );
 
   // 用字串 key 當 useMemo 依賴,避免 array reference 變動造成不必要的重建。
-  const timeRangeKey = `${timeRange[0]}-${timeRange[1]}`;
+  const debouncedTimeRangeKey = `${debouncedTimeRange[0]}-${debouncedTimeRange[1]}`;
   const selectedModesKey = selectedModes.join(',');
 
   return useMemo(() => {
@@ -55,7 +54,7 @@ export const useHeatmapLayer = (arrowTable: arrow.Table | undefined) => {
         widthMinPixels: 2,
 
         // GPU 過濾:時間範圍 + 單一 mode
-        timeRange,
+        debouncedTimeRange,
         filterCategories: [modeBitmask],
 
         parameters: {
@@ -68,5 +67,5 @@ export const useHeatmapLayer = (arrowTable: arrow.Table | undefined) => {
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arrowTable, visible, timeRangeKey, selectedModesKey]);
+  }, [arrowTable, visible, debouncedTimeRangeKey, selectedModesKey]);
 };
