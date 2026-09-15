@@ -1,5 +1,5 @@
 import { useMapStore } from '@/zustand/useMapStore';
-import { ORDERED_MOBILITY_MODES } from '../constants/map';
+import { AGENT_MODE_TRIP_COLORS, ORDERED_MOBILITY_MODES } from '../constants/map';
 
 
 export const ModeSelector = () => {
@@ -12,18 +12,23 @@ export const ModeSelector = () => {
         Mobility Modes
       </span>
       {ORDERED_MOBILITY_MODES.map((modeName, index) => {
-        const bitValue = 1 << index; 
+        const bitValue = 1 << index;
         const isChecked = selectedModes.includes(bitValue);
-        
+        // 跟地圖上軌跡/點位同一份顏色表（AGENT_MODE_TRIP_COLORS），順序與 ORDERED_MOBILITY_MODES 一致
+        const [r, g, b] = AGENT_MODE_TRIP_COLORS[index] ?? [255, 255, 255];
+
         return (
           <label key={modeName} className="flex items-center gap-3 cursor-pointer group">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               checked={isChecked}
               onChange={() => toggleMode(bitValue)}
               className="accent-cyan-500 w-4 h-4 cursor-pointer"
             />
-            <span className={`text-sm uppercase transition-colors ${isChecked ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>
+            <span
+              className={`text-sm uppercase transition-opacity ${isChecked ? 'opacity-100' : 'opacity-40 group-hover:opacity-70'}`}
+              style={{ color: `rgb(${r}, ${g}, ${b})` }}
+            >
               {modeName}
             </span>
           </label>

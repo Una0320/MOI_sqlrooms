@@ -17,6 +17,22 @@ type AgentCache = {
   modes: number[];      // 可以是 per-segment 或 per-trip 單一值
 };
 
+// timestamps 對每個 agent 是遞增排序，二分搜尋找出 time 落在哪個 segment：
+// 回傳 j 使得 timestamps[j] <= time <= timestamps[j+1]。
+// 取代原本「每幀都從 0 開始線性掃描」的作法，時間複雜度從 O(numPoints) 降到 O(log numPoints)，
+// 且不受時間倒退（拖曳/循環重播）影響，不需要跨幀快取 index。
+const findSegmentIndex = (timestamps: number[], time: number): number => {
+  let lo = 0;
+  let hi = timestamps.length - 2;
+  if (hi < 0) return -1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (timestamps[mid] <= time) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+};
+
 export const usePointsLayer = (
   arrowTable: arrow.Table | undefined,
   currentZoom: number,
@@ -85,48 +101,39 @@ export const usePointsLayer = (
       const tStart = timestamps[0];
       const tEnd = timestamps[numPoints - 1];
 
-      if (time < tStart || time > tEnd) {
+      if (numPoints < 2 || time < tStart || time > tEnd) {
         colors[i * 4 + 3] = 0;
         continue;
       }
 
-      let found = false;
-      for (let j = 0; j < numPoints - 1; j++) {
-        const t1 = timestamps[j];
-        const t2 = timestamps[j + 1];
-        if (time < t1 || time > t2) continue;
+      const j = findSegmentIndex(timestamps, time);
+      const t1 = timestamps[j];
+      const t2 = timestamps[j + 1];
 
-        // modes 可能是 per-segment（長度 = numPoints-1）或 per-trip（長度 1）
-        const currentMode = modes.length > 1 ? modes[j] : (modes[0] ?? 1);
+      // modes 可能是 per-segment（長度 = numPoints-1）或 per-trip（長度 1）
+      const currentMode = modes.length > 1 ? modes[j] : (modes[0] ?? 1);
 
-        if (!selectedModes.includes(currentMode)) {
-          colors[i * 4 + 3] = 0;
-          found = true;
-          break;
-        }
-
-        const p1x = pathFlat[j * 2];
-        const p1y = pathFlat[j * 2 + 1];
-        const p2x = pathFlat[(j + 1) * 2];
-        const p2y = pathFlat[(j + 1) * 2 + 1];
-
-        const ratio = t2 > t1 ? (time - t1) / (t2 - t1) : 0;
-        positions[i * 3]     = p1x + (p2x - p1x) * ratio;
-        positions[i * 3 + 1] = p1y + (p2y - p1y) * ratio;
-        positions[i * 3 + 2] = 0;
-
-        const colorIndex = Math.floor(Math.log2(currentMode));
-        const modeColor = AGENT_MODE_TRIP_COLORS[colorIndex] ?? [255, 255, 255, 200];
-        colors[i * 4]     = modeColor[0];
-        colors[i * 4 + 1] = modeColor[1];
-        colors[i * 4 + 2] = modeColor[2];
-        colors[i * 4 + 3] = modeColor[3] ?? 200;
-
-        found = true;
-        break;
+      if (!selectedModes.includes(currentMode)) {
+        colors[i * 4 + 3] = 0;
+        continue;
       }
 
-      if (!found) colors[i * 4 + 3] = 0;
+      const p1x = pathFlat[j * 2];
+      const p1y = pathFlat[j * 2 + 1];
+      const p2x = pathFlat[(j + 1) * 2];
+      const p2y = pathFlat[(j + 1) * 2 + 1];
+
+      const ratio = t2 > t1 ? (time - t1) / (t2 - t1) : 0;
+      positions[i * 3]     = p1x + (p2x - p1x) * ratio;
+      positions[i * 3 + 1] = p1y + (p2y - p1y) * ratio;
+      positions[i * 3 + 2] = 0;
+
+      const colorIndex = Math.floor(Math.log2(currentMode));
+      const modeColor = AGENT_MODE_TRIP_COLORS[colorIndex] ?? [255, 255, 255, 200];
+      colors[i * 4]     = modeColor[0];
+      colors[i * 4 + 1] = modeColor[1];
+      colors[i * 4 + 2] = modeColor[2];
+      colors[i * 4 + 3] = modeColor[3] ?? 200;
     }
 
     return [

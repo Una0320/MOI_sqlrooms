@@ -4,7 +4,7 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
 import type * as arrow from 'apache-arrow';
 
-import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE } from '../constants/map';
+import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM } from '../constants/map';
 import { LAYER_IDS } from '../constants/layers';
 import { ArrowTripsLayer } from './custom_layer/arrowTripsLayer/ArrowTripsLayer';
 import { ArrowLoader, ArrowWorkerLoader } from '@loaders.gl/arrow';
@@ -13,6 +13,9 @@ import { useShallow } from '@sqlrooms/room-shell';
 import { useHeatmapLayer } from '../hooks/useHeatmapLayer';
 import { useODArcLayer } from '../hooks/useODArcLayer';
 import { usePointsLayer, ZOOM_THRESHOLD } from '../hooks/usePointsLayer';
+import { useFacilityPointsLayer } from '../hooks/useFacilityPointsLayer';
+import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
+import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -40,6 +43,20 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     setCurrentZoom(e.viewState.zoom);
   }, []);
 
+  // Stations/Shelters 的 hover tooltip：依 layer id 分辨物件形狀，顯示編號/名稱/容量
+  const getTooltip = useCallback((info: any) => {
+    const obj = info?.object;
+    if (!obj) return null;
+    if (info.layer?.id === 'facility-stations') {
+      const kindLabel = obj.kind === 'bus' ? '公車站' : '捷運站';
+      return { text: `${kindLabel}\n編號: ${obj.id}\n${obj.name ?? ''}` };
+    }
+    if (info.layer?.id === 'facility-shelters') {
+      return { text: `避難所\n編號: ${obj.id}\n${obj.name ?? ''}\n容量: ${obj.capacity ?? '—'} 人` };
+    }
+    return null;
+  }, []);
+
   // 加這段
   const [debouncedTimeRange, setDebouncedTimeRange] = useState<[number, number]>(timeRange);
   useEffect(() => {
@@ -52,6 +69,9 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   const heatmapLayers = useHeatmapLayer(arrowTable, debouncedTimeRange);
   const odArcLayer = useODArcLayer();
   const pointsLayers = usePointsLayer(arrowTable, currentZoom);
+  const facilityLayers = useFacilityPointsLayer();
+  const stopCountsLayers = useStopCountsLayer(currentZoom);
+  const shelterCapacityLayers = useShelterCapacityLayer();
   
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
@@ -100,9 +120,12 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:heatmap → od-arc → trips → points（後 push 的畫在上面）
+  // 順序:heatmap → od-arc → facilities → stop-counts → shelter-capacity → trips → points（後 push 的畫在上面）
   layers.push(...heatmapLayers);
   if (odArcLayer) layers.push(odArcLayer);
+  layers.push(...facilityLayers);
+  layers.push(...stopCountsLayers);
+  layers.push(...shelterCapacityLayers);
   layers.push(...pointsLayers);
 
   if (arrowTable && tripsVisible && currentZoom <= ZOOM_THRESHOLD) {
@@ -135,13 +158,20 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
 
   return (
     <div className="relative h-full w-full">
-      {/* 為了方便除錯，暫時保留左上角的時鐘，之後可以拿掉 */}
+      {/* 為了方便除錯，暫時保留左上角的時鐘/zoom，之後可以拿掉 */}
       <div className="absolute top-5 left-5 z-10 bg-black/80 text-white p-3 rounded font-mono">
-        Time: {Math.floor(time)}
+        <div>Time: {Math.floor(time)}</div>
+        <div>Zoom: {currentZoom.toFixed(2)}</div>
       </div>
 
-      <Map initialViewState={INITIAL_VIEW_STATE} mapStyle={MAP_STYLE} onMove={handleMove}>
-        <DeckGLOverlay layers={layers} />
+      <Map
+        initialViewState={INITIAL_VIEW_STATE}
+        mapStyle={MAP_STYLE}
+        onMove={handleMove}
+        minZoom={MAP_MIN_ZOOM}
+        maxZoom={MAP_MAX_ZOOM}
+      >
+        <DeckGLOverlay layers={layers} getTooltip={getTooltip} />
         <NavigationControl position="top-left" />
       </Map>
     </div>

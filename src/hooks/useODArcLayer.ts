@@ -3,19 +3,21 @@ import { useSql } from '@sqlrooms/duckdb';
 import { useShallow } from '@sqlrooms/room-shell';
 import { useMapStore } from '@/zustand/useMapStore';
 import { LAYER_IDS } from '@/constants/layers';
-import { OD_DATA_URL } from '@/constants/data';
+import { SCENARIO_CONFIG } from '@/constants/data';
 import { ArrowODArcLayer } from '@/components/custom_layer/arrowODArcLayer/ArrowODArcLayer';
 
-const query = `SELECT * FROM read_parquet('${OD_DATA_URL}')`;
-
 export const useODArcLayer = () => {
-  const { timeRange, selectedModes, odVisible } = useMapStore(
+  const { timeRange, selectedModes, odVisible, scenarioType } = useMapStore(
     useShallow((state) => ({
       timeRange: state.timeRange,
       selectedModes: state.selectedModes,
       odVisible: state.visibleLayers[LAYER_IDS.OD_ARC] ?? false,
+      scenarioType: state.scenarioType,
     }))
   );
+
+  const odDataUrl = SCENARIO_CONFIG[scenarioType].odDataUrl;
+  const query = `SELECT * FROM read_parquet('${odDataUrl}')`;
 
   const { data: queryResult } = useSql<Record<string, unknown>>({ query });
   const arrowTable = queryResult?.arrowTable;

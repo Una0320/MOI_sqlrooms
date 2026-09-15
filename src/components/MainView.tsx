@@ -1,15 +1,21 @@
 import { SpinnerPane } from '@sqlrooms/ui';
 import { useSql } from '@sqlrooms/duckdb';
+import { useShallow } from '@sqlrooms/room-shell';
 
-import { DATA_URL } from '../constants/data';
+import { SCENARIO_CONFIG } from '../constants/data';
+import { useMapStore } from '../zustand/useMapStore';
 import { MapView } from './MapView';
 import { ModeSelector } from './ModeSelector';
 import { LayerPanel } from './LayerPanel';
+import { ScenarioSwitcher } from './ScenarioSwitcher';
 import { Timebar } from './timebar/Timebar';
 
 export const MainView: React.FC = () => {
+  const scenarioType = useMapStore(useShallow((s) => s.scenarioType));
+  const dataUrl = SCENARIO_CONFIG[scenarioType].dataUrl;
+
   const { data, isLoading, error } = useSql({
-    query: `SELECT paths, timestamps, modes FROM read_parquet('${DATA_URL}')`,
+    query: `SELECT paths, timestamps, modes FROM read_parquet('${dataUrl}')`,
   });
 
   const arrowTable = data?.arrowTable;
@@ -21,6 +27,11 @@ export const MainView: React.FC = () => {
           {/* 最底層：地圖 */}
           <div className="absolute inset-0 z-0">
             <MapView arrowTable={arrowTable} />
+          </div>
+
+          {/* 正上方置中：情境類型切換 */}
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10">
+            <ScenarioSwitcher />
           </div>
 
           {/* 右上角：運具選擇器 + 圖層控制 */}

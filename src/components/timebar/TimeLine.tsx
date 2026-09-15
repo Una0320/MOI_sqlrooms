@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useMapStore } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
-import { DATA_URL } from "@/constants/data";
+import { SCENARIO_CONFIG } from "@/constants/data";
 
 const BIN_SIZE = 60;            // SQL 粒度:60 秒一格(夠細,JS 端再做視覺重取樣)
 const HARD_MAX_SEC = 86400;     // 顯示上限:24:00:00(超過的資料不入 bar)
@@ -10,12 +10,12 @@ const step = 10 * 60;           // 滑桿的吸附步長:10 分鐘
 const MAX_BARS = 50;            // 視覺上希望 Timebar 最多畫幾條 bar
 
 // 動態 bins:起點 = 資料真正最小的 timestamp,終點 = MIN(資料 max, 24h)
-const query = `
+const buildQuery = (dataUrl: string) => `
   WITH agent_ranges AS (
     SELECT
       list_min(timestamps) AS t_start,
       list_max(timestamps) AS t_end
-    FROM read_parquet('${DATA_URL}')
+    FROM read_parquet('${dataUrl}')
   ),
   bounds AS (
     SELECT
@@ -44,15 +44,16 @@ const query = `
 
 export const TimeLine = () => {
   // 🌟 把原本的 useGlobalTimer 和 dispatch 換成 Zustand
-  const { 
-    viewTimeRange, 
-    displayTimeRange, 
-    timeRange, 
-    setTimeRange, 
-    setDisplayTimeRange, 
+  const {
+    viewTimeRange,
+    displayTimeRange,
+    timeRange,
+    setTimeRange,
+    setDisplayTimeRange,
     setIsPlaying,
     setViewTimeRange,
-    setTime          
+    setTime,
+    scenarioType,
   } = useMapStore(useShallow((state) => ({
     viewTimeRange: state.viewTimeRange,
     displayTimeRange: state.displayTimeRange,
@@ -62,7 +63,10 @@ export const TimeLine = () => {
     setIsPlaying: state.setIsPlaying,
     setViewTimeRange: state.setViewTimeRange,
     setTime: state.setTime,
+    scenarioType: state.scenarioType,
   })));
+
+  const query = buildQuery(SCENARIO_CONFIG[scenarioType].dataUrl);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<string | null>(null); 

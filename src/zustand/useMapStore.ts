@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { INITIAL_SELETED_MOBILITY_MODES_BITS } from '../constants/map';
 import { INITIAL_VISIBLE_LAYERS, type LayerId } from '../constants/layers';
+import type { ScenarioType } from '../constants/data';
 /**
 變數名稱,     代表意義,             範例 (秒),        視覺表現
 ViewRange,   數據的絕對邊界,        "[0, 86400]",    整個時間軸的總長度
@@ -17,6 +18,7 @@ interface MapState {
   timeScale: number;
   selectedModes: number[];
   visibleLayers: Record<LayerId, boolean>;
+  scenarioType: ScenarioType;
 
   setTime: (t: number) => void;
   setTimeRange: (range: [number, number]) => void;
@@ -27,6 +29,7 @@ interface MapState {
   setDisplayTimeRange: (range: [number, number]) => void;
   setViewTimeRange: (range: [number, number]) => void;
   toggleLayer: (id: LayerId) => void;
+  setScenarioType: (type: ScenarioType) => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -38,6 +41,7 @@ export const useMapStore = create<MapState>((set) => ({
   timeScale: 30, // 預設 30 倍速
   selectedModes: INITIAL_SELETED_MOBILITY_MODES_BITS,
   visibleLayers: INITIAL_VISIBLE_LAYERS,
+  scenarioType: 'mass_evacuation', // 預設對齊現有的 pt10 設定
 
   setTime: (t) => set({ time: t }),
   setTimeRange: (range) => set({ timeRange: range }),
@@ -46,7 +50,7 @@ export const useMapStore = create<MapState>((set) => ({
   toggleMode: (modeBit) => set((state) => {
     const isSelected = state.selectedModes.includes(modeBit);
     return {
-      selectedModes: isSelected 
+      selectedModes: isSelected
         ? state.selectedModes.filter(m => m !== modeBit)
         : [...state.selectedModes, modeBit]
     };
@@ -57,4 +61,12 @@ export const useMapStore = create<MapState>((set) => ({
   toggleLayer: (id) => set((state) => ({
     visibleLayers: { ...state.visibleLayers, [id]: !state.visibleLayers[id] },
   })),
+  // 兩種情境的時間軸長度差很多（pt* 70 小時、evac_ratio* 1.5 小時），切換時把播放狀態
+  // 重置回起點，不然可能卡在一個對新情境無效的時間點，畫面看起來像壞掉。
+  setScenarioType: (type) => set({
+    scenarioType: type,
+    time: 0,
+    timeRange: [0, 1800],
+    isPlaying: false,
+  }),
 }));
