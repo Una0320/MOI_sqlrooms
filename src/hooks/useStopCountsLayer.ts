@@ -203,7 +203,9 @@ export const useStopCountsLayer = (currentZoom: number) => {
         getRadius: (d: StopSnapshot) => d.radius,
         radiusUnits: 'pixels',
         radiusMinPixels: 3,
-        pickable: false,
+        // 開放 hover：讓人可以確認畫面上這個「泡泡」是不是真的候車站點（而不是誤以為是
+        // 擋住其他點位的不明物體）——之前設 false 是因為原本沒有用到，不是刻意要隱藏它。
+        pickable: true,
         parameters: { depthTest: false },
       } as any),
       // 圈裡直接標數字，比用圈的大小去目測精準
