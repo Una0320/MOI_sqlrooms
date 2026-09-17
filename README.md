@@ -32,7 +32,8 @@
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
 | **情境切換** | 一個 Zustand 狀態驅動所有查詢與圖層可見性 | 「就地避難」／「大規模疏散」各自的資料、疊圖互不干擾，切換即時重載 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
-| **設施點位 Tooltip** | Stations/Shelters 可點擊，顯示編號/名稱/容量 | 不用另外查表就能核對站牌或避難所身分 |
+| **設施點位 Tooltip** | Stations/Shelters/Stop-Counts 候車泡泡/Shelter-Capacity 飽和率圈都可點擊 | 不用另外查表就能核對站牌、避難所身分、候車人數與收容飽和度 |
+| **移動點位 Tooltip** | Points 圖層逐點顯示路徑編號/運具/即時時速，時速過低會標「塞車/等待中」或「緩慢移動」 | 不用隱藏停滯的點也能用滑鼠找出卡在哪一段的路徑 |
 
 ---
 
@@ -61,19 +62,35 @@ yarn install
 ```
 
 ### 3. 準備本機測試資料
-本機開發用的測試資料放在 `sim_data/20260910/`（已加入 `.gitignore`，不隨 repo 一起走，需要另外取得）。準備好之後，啟動一個支援 Range Requests + CORS 的靜態伺服器指到這個資料夾：
+本機開發用的測試資料放在 `sim_data/20260910/`（已加入 `.gitignore`，不隨 repo 一起走，需要另外跟專案負責人索取一份）。
+
+⚠️ **這一步不能跳過**：`clone` 下來的專案預設沒有這個資料夾。如果直接 `yarn dev` 卻沒有先準備好 `sim_data/` 並啟動下面的資料伺服器，前端畫面會卡在 Loading 轉圈，或是左上角跳出紅色錯誤訊息（類似 `IO Error: Could not connect to server ...`）——這是 DuckDB-WASM 連不到 `VITE_DUCKDB_CONNECTION_STRING` 指到的資料伺服器，不是程式壞掉，把資料夾補齊、伺服器啟動起來就會恢復正常。
+
+準備好資料夾之後，啟動一個支援 Range Requests + CORS 的靜態伺服器指到這個資料夾：
 
 ```bash
 npx http-server sim_data/20260910 -p 7780 --cors
 ```
 
 ### 4. 啟動服務
-本系統需要同時啟動資料伺服器（上一步）與前端開發環境：
+本系統需要同時啟動資料伺服器（上一步）與前端開發環境（建議開兩個終端機視窗）：
 
 ```bash
 # 前端：啟動 Vite 開發環境
 yarn dev
 ```
+
+打開 http://localhost:5173 應該就能看到地圖畫面。
+
+### 5. 其他指令
+
+```bash
+yarn build    # tsc -b && vite build，輸出正式版到 dist/
+yarn lint     # eslint .
+yarn preview  # 本機預覽 build 出來的 dist/
+```
+
+部署目標是 Netlify（見 `netlify.toml`）：`yarn build` → 上傳 `dist/`，設定裡有 `CI=false` 跟加大的 Node heap（處理大量 Parquet/Arrow 資料時避免 build 階段記憶體不足）。
 
 ---
 
