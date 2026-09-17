@@ -1,5 +1,5 @@
 import { useMapStore } from '@/zustand/useMapStore';
-import { AGENT_MODE_TRIP_COLORS, ORDERED_MOBILITY_MODES } from '../constants/map';
+import { AGENT_MODE_TRIP_COLORS, MOBILITY_MODE_BITS, ORDERED_MOBILITY_MODES } from '../constants/map';
 
 
 export const ModeSelector = () => {
@@ -11,11 +11,13 @@ export const ModeSelector = () => {
       <span className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-700 pb-2">
         Mobility Modes
       </span>
-      {ORDERED_MOBILITY_MODES.map((modeName, index) => {
-        const bitValue = 1 << index;
+      {ORDERED_MOBILITY_MODES.map((modeName) => {
+        const bitValue = MOBILITY_MODE_BITS[modeName];
         const isChecked = selectedModes.includes(bitValue);
-        // 跟地圖上軌跡/點位同一份顏色表（AGENT_MODE_TRIP_COLORS），順序與 ORDERED_MOBILITY_MODES 一致
-        const [r, g, b] = AGENT_MODE_TRIP_COLORS[index] ?? [255, 255, 255];
+        // 跟地圖上軌跡/點位同一份顏色表（AGENT_MODE_TRIP_COLORS），用 log2(bit) 對照，
+        // 而不是這裡的顯示順序 index——顏色表是照實際資料的 mode bit 排的
+        const colorIndex = Math.floor(Math.log2(bitValue));
+        const [r, g, b] = AGENT_MODE_TRIP_COLORS[colorIndex] ?? [255, 255, 255];
 
         return (
           <label key={modeName} className="flex items-center gap-3 cursor-pointer group">

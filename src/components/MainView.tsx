@@ -34,8 +34,12 @@ export const MainView: React.FC = () => {
             <ScenarioSwitcher />
           </div>
 
-          {/* 右上角：運具選擇器 + 圖層控制 */}
-          <div className="absolute top-5 right-5 z-10 flex flex-col gap-3">
+          {/* 右上角：運具選擇器 + 圖層控制。max-h + overflow-y-auto：小螢幕（視窗高度不夠）時
+              這一疊面板自己捲動，不會往下長到蓋住 Timebar。
+              ⚠ 240px 是量出來的：Timebar 實測高度 ~177px + 它的 bottom-5(20px) + 這裡自己的
+              top-5(20px) + ~20px 緩衝，兩個面板之間才不會貼到邊界甚至疊到。改 Timebar 高度時要
+              一起調這個數字，不然又會蓋回去。 */}
+          <div className="absolute top-5 right-5 z-10 flex flex-col gap-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
             <ModeSelector />
             <LayerPanel />
           </div>

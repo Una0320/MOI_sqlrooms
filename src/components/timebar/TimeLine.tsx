@@ -244,7 +244,7 @@ export const TimeLine = () => {
   // 畫面渲染邏輯保持完全一樣
   return (
     <div className="relative flex w-full touch-none select-none items-center" ref={trackRef}>
-      <div className="relative h-12 w-full grow overflow-hidden bg-[#2B2B38] border border-slate-700 rounded-sm">
+      <div className="relative h-10 w-full grow overflow-hidden bg-[#2B2B38] border border-slate-700 rounded-sm">
         <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
           <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
             {histogramBars.map((heightRatio, i) => (
@@ -269,28 +269,28 @@ export const TimeLine = () => {
         />
       </div>
       <div
-        className="absolute block h-14 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
+        className="absolute block h-12 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
         style={{ left: `${leftDisplayPct}%`, transform: 'translateX(-50%)' }}
         onPointerDown={(e) => handlePointerDown(e, 'display-start')}
         onPointerMove={handleDisplayTimeRangeMove}
         onPointerUp={handlePointerUp}
       />
       <div
-        className="absolute block h-14 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
+        className="absolute block h-12 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
         style={{ left: `${leftDisplayPct + widthDisplayPct}%`, transform: 'translateX(-50%)' }}
         onPointerDown={(e) => handlePointerDown(e, 'display-end')}
         onPointerMove={handleDisplayTimeRangeMove}
         onPointerUp={handlePointerUp}
       />
       <div
-        className="absolute block h-14 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
+        className="absolute block h-12 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
         style={{ left: `${leftPct}%`, transform: 'translateX(-50%)' }}
         onPointerDown={(e) => handlePointerDown(e, 'start')}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       />
       <div
-        className="absolute block h-14 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
+        className="absolute block h-12 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
         style={{ left: `${leftPct + widthPct}%`, transform: 'translateX(-50%)' }}
         onPointerDown={(e) => handlePointerDown(e, 'end')}
         onPointerMove={handlePointerMove}

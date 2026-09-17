@@ -45,19 +45,20 @@ export const Timebar = () => {
 
   return (
     // 🌟 3. 調整 shadcn Card 樣式，加入半透明黑與邊框，融入 Deck.gl 深色地圖
-    <Card className="p-4 mt-4 select-none w-full bg-[#2B2B38]/90 border-slate-700 shadow-xl backdrop-blur-md">
-      <div className="flex items-center gap-4 mb-3">
-        
+    // padding/margin 縮小一點，讓 Timebar 整體矮一些——小螢幕時比較不容易蓋到右上角面板
+    <Card className="p-3 mt-2 select-none w-full bg-[#2B2B38]/90 border-slate-700 shadow-xl backdrop-blur-md">
+      <div className="flex items-center gap-4 mb-2">
+
         {/* 🌟 4. 使用 shadcn Button */}
-        <Button 
-          size="icon" 
-          variant={isPlaying ? "secondary" : "default"} 
+        <Button
+          size="icon"
+          variant={isPlaying ? "secondary" : "default"}
           onClick={handleTimerClick}
-          className="w-10 h-10 transition-all hover:scale-105"
+          className="w-9 h-9 transition-all hover:scale-105"
         >
-          {isPlaying ? 
-            <Pause size={18} className="fill-current" /> 
-            : 
+          {isPlaying ?
+            <Pause size={18} className="fill-current" />
+            :
             <Play size={18} className="fill-current ml-1" />
           }
         </Button>

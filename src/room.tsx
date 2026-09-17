@@ -1,30 +1,15 @@
 import {RoomShell} from '@sqlrooms/room-shell';
-import {SqlEditorModal} from '@sqlrooms/sql-editor';
-import {ThemeSwitch, useDisclosure} from '@sqlrooms/ui';
-import {TerminalIcon} from 'lucide-react';
 import {roomStore} from './store';
 
 export const Room = () => {
-  const sqlEditorDisclosure = useDisclosure();
   return (
     <RoomShell className="h-screen" roomStore={roomStore}>
-      <RoomShell.Sidebar>
-        <RoomShell.SidebarButton
-          title="SQL Editor"
-          onClick={sqlEditorDisclosure.onToggle}
-          isSelected={false}
-          icon={TerminalIcon}
-        />
-        <RoomShell.CommandPalette.Button />
-        <ThemeSwitch />
-      </RoomShell.Sidebar>
-      <RoomShell.LayoutComposer />
+      {/* tileClassName 蓋掉 @sqlrooms/layout 預設的 'p-2 bg-secondary/10'——
+          那是留給多面板 dashboard 的分隔留白，我們只有全螢幕地圖這一個面板，
+          留白 + light 主題的淡色背景疊在深色地圖外面看起來就是一圈白邊 */}
+      <RoomShell.LayoutComposer tileClassName="p-0 bg-transparent" />
       <RoomShell.LoadingProgress />
       <RoomShell.CommandPalette />
-      <SqlEditorModal
-        isOpen={sqlEditorDisclosure.isOpen}
-        onClose={sqlEditorDisclosure.onClose}
-      />
     </RoomShell>
   );
 };
