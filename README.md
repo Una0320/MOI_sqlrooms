@@ -62,14 +62,14 @@ yarn install
 ```
 
 ### 3. 準備本機測試資料
-本機開發用的測試資料放在 `sim_data/20260910/`（已加入 `.gitignore`，不隨 repo 一起走，需要另外跟專案負責人索取一份）。
+本機開發用的測試資料放在 `sim_data/` 底下的單一交付批次資料夾（已加入 `.gitignore`，不隨 repo 一起走，需要另外跟專案負責人索取一份）。資料夾名稱每次交付可能不同，不一定是日期格式，請以實際拿到的為準（目前是 `sim_data/20260916/`）。
 
 ⚠️ **這一步不能跳過**：`clone` 下來的專案預設沒有這個資料夾。如果直接 `yarn dev` 卻沒有先準備好 `sim_data/` 並啟動下面的資料伺服器，前端畫面會卡在 Loading 轉圈，或是左上角跳出紅色錯誤訊息（類似 `IO Error: Could not connect to server ...`）——這是 DuckDB-WASM 連不到 `VITE_DUCKDB_CONNECTION_STRING` 指到的資料伺服器，不是程式壞掉，把資料夾補齊、伺服器啟動起來就會恢復正常。
 
 準備好資料夾之後，啟動一個支援 Range Requests + CORS 的靜態伺服器指到這個資料夾：
 
 ```bash
-npx http-server sim_data/20260910 -p 7780 --cors
+npx http-server sim_data/<交付批次資料夾> -p 7780 --cors   # 例：sim_data/20260916，請以本機實際資料夾名稱為準
 ```
 
 ### 4. 啟動服務

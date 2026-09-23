@@ -6,7 +6,7 @@ const _baseUrl = DATA_BASE_URL.endsWith('/') ? DATA_BASE_URL : DATA_BASE_URL + '
 
 const urlFor = (path: string) => new URL(path, _baseUrl).href;
 
-// 靜態站點/避難所（02_points/，不隨情境變，詳見 sim_data/20260910/README.md §5）
+// 靜態站點/避難所（02_points/，不隨情境變，詳見 sim_data/ 底下當前交付批次資料夾的 README.md §5 —— 資料夾名稱每次交付可能不同，不要假設是日期）
 export const BUS_STOPS_URL = urlFor('02_points/bus_stops.csv');
 export const METRO_STATIONS_URL = urlFor('02_points/metro_stations.csv');
 export const SHELTERS_URL = urlFor('02_points/shelters.csv');

@@ -20,12 +20,12 @@ There is no test suite. `.env` needs `VITE_DUCKDB_CONNECTION_STRING` (base URL o
 
 ### Local test data (`sim_data/`)
 
-Local development points at `sim_data/20260910/` — a delivered test batch (git-ignored, ask for a fresh copy if missing) with its own `README.md` describing 5 subfolders (`01_trajectory`, `02_points`, `03_stop_counts`, `04_shelter_capacity`, `05_moi_sim`) across 6 scenarios (`pt10/20/40`, `evac_ratio10/20/40`). This app currently only wires up **`05_moi_sim`** (trips + OD arc — schema-compatible drop-in for the existing `paths/timestamps/modes` query, so no query changes needed), **`02_points`** (static bus stops/metro stations/shelters), **`03_stop_counts`**, and **`04_shelter_capacity`**, fixed to one sub-scenario per type (`pt10` for mass-evacuation, `evac_ratio10` for shelter-in-place — see `SCENARIO_CONFIG`). `01_trajectory` (per-mode split files) and `05_moi_sim/road_service_*.geojson` (road V/C service level) are **not** wired up yet.
+Local development points at whichever single delivery folder currently exists under `sim_data/` — folder naming varies per delivery (not always a date; currently `sim_data/20260916/`) — a delivered test batch (git-ignored, ask for a fresh copy if missing) with its own `README.md` describing 5 subfolders (`01_trajectory`, `02_points`, `03_stop_counts`, `04_shelter_capacity`, `05_moi_sim`) across 6 scenarios (`pt10/20/40`, `evac_ratio10/20/40`). This app currently only wires up **`05_moi_sim`** (trips + OD arc — schema-compatible drop-in for the existing `paths/timestamps/modes` query, so no query changes needed), **`02_points`** (static bus stops/metro stations/shelters), **`03_stop_counts`**, and **`04_shelter_capacity`**, fixed to one sub-scenario per type (`pt10` for mass-evacuation, `evac_ratio10` for shelter-in-place — see `SCENARIO_CONFIG`). `01_trajectory` (per-mode split files) and `05_moi_sim/road_service_*.geojson` (road V/C service level) are **not** wired up yet.
 
 Since `sim_data/` isn't served anywhere in production, local dev needs a standalone static file server with Range + CORS support pointed at it, e.g.:
 
 ```bash
-npx http-server sim_data/20260910 -p 7780 --cors
+npx http-server sim_data/<delivery-folder> -p 7780 --cors   # e.g. sim_data/20260916 — check what's actually on disk
 ```
 
 `VITE_DUCKDB_CONNECTION_STRING` just needs to match that server's base URL.
