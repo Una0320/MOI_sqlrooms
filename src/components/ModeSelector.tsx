@@ -37,7 +37,7 @@ export const ModeSelector = () => {
               type="checkbox"
               checked={isChecked}
               onChange={() => toggleMode(bitValue)}
-              className="accent-cyan-500 w-3.5 h-3.5 cursor-pointer"
+              className="accent-white w-3.5 h-3.5 cursor-pointer"
             />
             <span
               className={`text-[13px] uppercase transition-opacity ${isChecked ? 'opacity-100' : 'opacity-40 group-hover:opacity-70'}`}

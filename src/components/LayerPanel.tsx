@@ -45,7 +45,7 @@ export const LayerPanel = () => {
               checked={isChecked}
               disabled={noData}
               onChange={() => toggleLayer(layer.id as LayerId)}
-              className="accent-cyan-500 w-3.5 h-3.5 mt-[3px] shrink-0 cursor-pointer disabled:cursor-not-allowed"
+              className="accent-white w-3.5 h-3.5 mt-[3px] shrink-0 cursor-pointer disabled:cursor-not-allowed"
             />
             {/* whitespace-nowrap：標題不換行也不截斷；沒資料的提示另起一行（獨立小字），不跟標題擠在同一行 */}
             <span className="flex flex-col leading-tight">
