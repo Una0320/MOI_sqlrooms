@@ -57,7 +57,7 @@ VITE_MAPTILER_API_KEY=
 
 `VITE_MAPTILER_API_KEY` 是選填的底圖來源設定：到 [MapTiler](https://cloud.maptiler.com/account/keys/) 免費申請一組 key 填進去，地圖底圖會換成 MapTiler 的 `dataviz-dark` 樣式（OSM 資料每週重建一次）；不填的話會 fallback 回原本的 CARTO `dark-matter-gl-style`（該底圖官方文件寫最慢一年才更新一次，新完工的路橋等建設可能好幾個月都看不到）。
 
-底圖設定集中在 `src/constants/basemap.ts`。開發時（`yarn dev`）可以在網址加 `?basemap=<名稱>` 試不同底圖：`current`（現行，預設）／`dark`（CARTO dark-matter 無文字）／`positron`（CARTO 淺色）／`nlsc`（國土測繪中心 EMAP 點陣圖磚，已降彩度與亮度）。試過的結論：`dark` 對比最高但沒有地名、`positron` 太亮（白色軌跡會消失，不適合）、`nlsc` 底圖文字太雜；預設仍維持 `current`，等選定後再改。
+底圖設定集中在 `src/constants/basemap.ts`。開發時（`yarn dev`）可以在網址加 `?basemap=<名稱>` 試不同底圖：`current`（現行，預設）／`dark`（CARTO dark-matter 無文字）／`positron`（CARTO 淺色）／`nlsc`（國土測繪中心 EMAP 點陣圖磚，已降彩度與亮度）。四個選項的載入都用程式檢查過（style / 圖磚請求皆 HTTP 200、console 無錯誤；nlsc 31 個圖磚請求回應中位數約 0.18 秒、最慢約 0.29 秒）。早期試看的初步印象（最後由你自己用 `?basemap=` 切換決定）：`dark` 對比最高但沒有地名、`positron` 太亮（白色軌跡會消失，不適合）、`nlsc` 底圖文字太雜；預設仍維持 `current`，等選定後再改。
 
 ### 2. 安裝系統依賴
 請確保你的環境已安裝 Node.js，然後執行以下指令：
