@@ -8,10 +8,9 @@ const _baseUrl = DATA_BASE_URL.endsWith('/') ? DATA_BASE_URL : DATA_BASE_URL + '
 
 const urlFor = (path: string) => new URL(path, _baseUrl).href;
 
-// 靜態站點/避難所（02_points/，不隨情境變，詳見 sim_data/ 底下當前交付批次資料夾的 README.md §5 —— 資料夾名稱每次交付可能不同，不要假設是日期）
+// 靜態站點（02_points/，供 Stop Counts 圖層 join 座標用，不隨情境變，詳見 sim_data/ 底下當前交付批次資料夾的 README.md §5 —— 資料夾名稱每次交付可能不同，不要假設是日期）
 export const BUS_STOPS_URL = urlFor('02_points/bus_stops.csv');
 export const METRO_STATIONS_URL = urlFor('02_points/metro_stations.csv');
-export const SHELTERS_URL = urlFor('02_points/shelters.csv');
 
 // ───────────────────────── 維度 ─────────────────────────
 
@@ -48,9 +47,6 @@ export type FileSet = {
   stopCountsUrl: string | null; //      03_stop_counts
   shelterCapacityUrl: string | null; // 04_shelter_capacity
   roadServiceUrl: string | null; //     05_moi_sim/road_service_*.geojson（尖峰小時靜態 V/C）
-  busStopsUrl: string | null; //        02_points 站點標記（Stations 圖層；公車）
-  metroStationsUrl: string | null; //   02_points 站點標記（Stations 圖層；捷運）
-  sheltersUrl: string | null; //        02_points 避難所標記（Shelters 圖層）
   // 左上角完成率的算法（見 hooks/useEvacuationRate.ts）：
   //   'people_weighted' — 「Evacuation rate」：一列 = 一個 agent，car agent 算 4 人、其餘 1 人（evac_ratio）
   //   'leg_count'       — 「Leg completion」：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
@@ -65,9 +61,6 @@ const EMPTY: FileSet = {
   stopCountsUrl: null,
   shelterCapacityUrl: null,
   roadServiceUrl: null,
-  busStopsUrl: null,
-  metroStationsUrl: null,
-  sheltersUrl: null,
   evacuationRate: null,
 };
 
@@ -85,8 +78,6 @@ for (const r of RATIOS) {
     odDataUrl: urlFor(`05_moi_sim/abm_od_arc_outcome_10000_pt${r}.parquet`),
     stopCountsUrl: urlFor(`03_stop_counts/stop_counts_pt${r}.parquet`),
     roadServiceUrl: r === 20 ? urlFor('05_moi_sim/road_service_pt20.geojson') : null,
-    busStopsUrl: BUS_STOPS_URL,
-    metroStationsUrl: METRO_STATIONS_URL,
     evacuationRate: 'leg_count',
   };
   // 就近避難（evac_ratio*）：有避難所飽和率；零大眾運輸所以沒有候車人潮（README §5）。
@@ -95,7 +86,6 @@ for (const r of RATIOS) {
     dataUrl: urlFor(`05_moi_sim/abm_format_outcome_10000_evac_ratio${r}.parquet`),
     odDataUrl: urlFor(`05_moi_sim/abm_od_arc_outcome_10000_evac_ratio${r}.parquet`),
     shelterCapacityUrl: urlFor(`04_shelter_capacity/shelter_capacity_evac_ratio${r}.parquet`),
-    sheltersUrl: SHELTERS_URL,
     evacuationRate: 'people_weighted',
   };
 }

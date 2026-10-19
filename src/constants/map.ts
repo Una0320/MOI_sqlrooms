@@ -64,11 +64,6 @@ export const MODE_BIT_LABELS: Record<number, string> = {
   [MOBILITY_MODE_BITS[MOBILITY_MODES.RAIL]]: '捷運',
 }
 
-// 靜態設施點位顏色（02_points/）。刻意不用 AGENT_MODE_TRIP_COLORS 裡的任何一色，
-// 避免跟軌跡/agent 點位混淆——地圖底圖是深色，這兩色在深色背景上都夠亮、夠獨立。
-export const FACILITY_STATION_COLOR: [number, number, number, number] = [255, 255, 255, 230]; // 站點（公車站+捷運站合併一色）
-export const FACILITY_SHELTER_COLOR: [number, number, number, number] = [236, 72, 153, 230]; // 避難所
-
 // 避難所飽和度分級顏色。⚠ 04_shelter_capacity/ 實際 status 欄位值是
 // empty/normal/crowded/near_full/over_capacity（不是文件寫的 empty/low/medium/high/over），
 // 之前 key 對不上，除了 empty 以外全部 fallback 成灰白色——這才是「圈都是白色半透明」的真正原因。

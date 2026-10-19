@@ -14,7 +14,6 @@ import { useShallow } from '@sqlrooms/room-shell';
 import { useHeatmapLayer } from '../hooks/useHeatmapLayer';
 import { useODArcLayer } from '../hooks/useODArcLayer';
 import { usePointsLayer, ZOOM_THRESHOLD } from '../hooks/usePointsLayer';
-import { useFacilityPointsLayer } from '../hooks/useFacilityPointsLayer';
 import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
 import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
@@ -68,17 +67,10 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     setCurrentZoom(e.viewState.zoom);
     lastViewState = e.viewState;
   }, []);
-  // Stations/Shelters 的 hover tooltip：依 layer id 分辨物件形狀，顯示編號/名稱/容量
+  // Stop Counts / Shelter Capacity 的 hover tooltip：依 layer id 分辨物件形狀
   const getTooltip = useCallback((info: any) => {
     const obj = info?.object;
     if (!obj) return null;
-    if (info.layer?.id === 'facility-stations') {
-      const kindLabel = obj.kind === 'bus' ? '公車站' : '捷運站';
-      return { text: `${kindLabel}\n編號: ${obj.id}\n${obj.name ?? ''}` };
-    }
-    if (info.layer?.id === 'facility-shelters') {
-      return { text: `避難所\n編號: ${obj.id}\n${obj.name ?? ''}\n容量: ${obj.capacity ?? '—'} 人` };
-    }
     if (info.layer?.id === 'stop-counts-layer') {
       const kindLabel = obj.mode === 8 ? '公車站' : '捷運站';
       return { text: `${kindLabel}\n候車人數: ${obj.waiting}` };
@@ -126,7 +118,6 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     [getTooltip, getPointTooltip]
   );
 
-  const facilityLayers = useFacilityPointsLayer();
   const stopCountsLayers = useStopCountsLayer(currentZoom);
   const shelterCapacityLayers = useShelterCapacityLayer();
   const roadServiceLayer = useRoadServiceLayer(currentZoom);
@@ -184,7 +175,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:road-service → heatmap → od-arc → facilities → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
+  // 順序:road-service → heatmap → od-arc → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
   // ⚠ points 刻意排在 stop-counts/shelter-capacity 之前：代理人剛好停在站點/避難所座標上時，
   // 讓候車人潮泡泡/飽和率圈蓋在 points 上面（泡泡本來就比較大、代表匯總資訊，蓋掉底下單點
   // 才合理），不然兩個顏色相近、不透明度都調高的圓疊在一起，會變成一個圓「缺一角」的詭異形狀
@@ -192,7 +183,6 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   if (roadServiceLayer) layers.push(roadServiceLayer);
   layers.push(...heatmapLayers);
   if (odArcLayer) layers.push(odArcLayer);
-  layers.push(...facilityLayers);
   layers.push(...pointsLayers);
   layers.push(...stopCountsLayers);
   layers.push(...shelterCapacityLayers);
@@ -227,17 +217,26 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
 
   return (
     <div className="relative h-full w-full">
-      {/* 為了方便除錯，暫時保留左上角的時鐘/zoom，之後可以拿掉 */}
-      <div className="absolute top-5 left-5 z-10 bg-black/80 text-white p-3 rounded font-mono">
-        <div>Time: {formatDurationTo24Hour(time * 1000)}</div>
-        <div title={evacuationCurve.note} className="cursor-help">
-          {evacuationCurve.label}: {evacuationRate !== null ? `${evacuationRate.toFixed(1)}%` : evacuationCurve.kind === 'loading' ? '…' : '—'}
+      {/* 左上角資訊面板：Time / Zoom / 完成率。left-14：留出 MapLibre 的縮放按鈕（NavigationControl，
+          left-top 約 x:10–39），不然面板會蓋住它。數值用 #DF9651（對比：深色底圖上約 8.3:1，
+          最壞的淺色底圖也有 5.2:1，都過 WCAG AA 4.5:1），標籤維持白色。 */}
+      <div className="absolute top-5 left-14 z-10 bg-black/80 text-white px-3 py-2 rounded font-mono text-sm leading-snug">
+        <div>
+          Time: <span className="text-[#DF9651]">{formatDurationTo24Hour(time * 1000)}</span>
         </div>
-        <div>Zoom: {currentZoom.toFixed(2)}</div>
+        <div>
+          Zoom: <span className="text-[#DF9651]">{currentZoom.toFixed(2)}</span>
+        </div>
+        <div title={evacuationCurve.note} className="cursor-help">
+          {evacuationCurve.label}:{' '}
+          <span className="text-[#DF9651]">
+            {evacuationRate !== null ? `${evacuationRate.toFixed(1)}%` : evacuationCurve.kind === 'loading' ? '…' : '—'}
+          </span>
+        </div>
       </div>
 
-      {/* Road Service legend：左下，Timebar（~177px 高 + bottom-5）之上 */}
-      <div className="absolute left-5 bottom-[220px] z-10">
+      {/* Road Service legend：左下，Timebar（~105px 高 + bottom-5）之上 */}
+      <div className="absolute left-5 bottom-[150px] z-10">
         <RoadServiceLegend />
       </div>
 

@@ -10,7 +10,7 @@ export const ModeSelector = () => {
   const toggleMode = useMapStore((state) => state.toggleMode); // 直接訂閱 toggleMode 函數
 
   return (
-    <div className="bg-[#2B2B38]/90 border border-slate-700 p-4 rounded-lg text-white flex flex-col gap-3 font-mono shadow-xl backdrop-blur-sm">
+    <div className="bg-[#2B2B38]/90 border border-slate-700 p-3 rounded-lg text-white flex flex-col gap-2 font-mono shadow-xl backdrop-blur-sm">
       <div className={`flex items-center justify-between ${collapsed ? '' : 'border-b border-slate-700 pb-2'}`}>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Mobility Modes</span>
         <button
@@ -31,15 +31,15 @@ export const ModeSelector = () => {
         const [r, g, b] = AGENT_MODE_TRIP_COLORS[colorIndex] ?? [255, 255, 255];
 
         return (
-          <label key={modeName} className="flex items-center gap-3 cursor-pointer group">
+          <label key={modeName} className="flex items-center gap-2 cursor-pointer group">
             <input
               type="checkbox"
               checked={isChecked}
               onChange={() => toggleMode(bitValue)}
-              className="accent-cyan-500 w-4 h-4 cursor-pointer"
+              className="accent-cyan-500 w-3.5 h-3.5 cursor-pointer"
             />
             <span
-              className={`text-sm uppercase transition-opacity ${isChecked ? 'opacity-100' : 'opacity-40 group-hover:opacity-70'}`}
+              className={`text-[13px] uppercase transition-opacity ${isChecked ? 'opacity-100' : 'opacity-40 group-hover:opacity-70'}`}
               style={{ color: `rgb(${r}, ${g}, ${b})` }}
             >
               {modeName}

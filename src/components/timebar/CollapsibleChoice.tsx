@@ -26,7 +26,7 @@ export function CollapsibleChoice<T extends string | number>({
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
-        className="h-9 px-3 bg-[#1e1e24] border border-slate-700 rounded-lg text-xs font-mono text-slate-300 hover:text-white hover:bg-slate-700"
+        className="h-7 px-3 bg-[#1e1e24] border border-slate-700 rounded-lg text-xs font-mono text-slate-300 hover:text-white hover:bg-slate-700"
       >
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mr-2">
           {title}
@@ -50,7 +50,7 @@ export function CollapsibleChoice<T extends string | number>({
             onChange(o.value);
             setOpen(false);
           }}
-          className={`h-7 px-2 text-xs font-mono rounded-md transition-all ${
+          className={`h-6 px-2 text-xs font-mono rounded-md transition-all ${
             o.value === value
               ? "bg-cyan-500 text-slate-900 hover:bg-cyan-400 hover:text-slate-900 shadow-sm"
               : "text-slate-400 hover:text-white hover:bg-slate-700"
