@@ -9,15 +9,15 @@ import { useResolvedFiles } from './useResolvedFiles';
 // 這是「累計值」：不受時間窗口（timeRange）與 selectedModes 影響。
 //
 // 兩種口徑由 manifest 的 evacuationRate 決定（見 constants/data.ts）：
-//   'people_weighted'（evac_ratio）→ 標籤「Evacuation rate」，人數口徑：
+//   'people_weighted'（evac_ratio）→ 人數口徑：
 //     一列 = 一個 agent；modes 含 car(2) 算 4 人、其餘算 1 人（sim_data README：car agent 代表 4 人）。
 //     05_moi_sim 的 modes 是逐頂點清單，實測六個檔共 60,000 列每列都只有單一運具（沒有同時含 car 與
 //     walk 的 agent）；若以後出現混合列，整個 agent 算 4。
 //     ⚠ 基於 05_moi_sim 的 10,000 列抽樣（evac10 抽 10,000/10,510，evac40 只抽 10,000/40,133），
 //     百分比假設抽樣是均勻的；絕對人數不是全量。
-//   'leg_count'（pt*）→ 標籤「Leg completion」，每列權重 1：
+//   'leg_count'（pt*）→ 標籤同樣是「Evacuation rate」，每列權重 1：
 //     pt 的列是 leg（一段移動，agent 可有最多 12 段），05 又沒有 person_id，無法判定一個人是否走完
-//     全部行程，所以這是「移動段完成率」，不是人員撤離率，標籤與 tooltip 都要講清楚。
+//     全部行程，所以這是「以移動段計」的比率，不是嚴格的人員撤離率，靠 hover 提示講清楚。
 export type EvacuationCurve = {
   label: string; // 面板上的標籤
   note: string; // tooltip 說明
@@ -32,10 +32,9 @@ export type EvacuationCurve = {
     }
 );
 
-const PEOPLE_LABEL = 'Evacuation rate';
+const LABEL = 'Evacuation rate'; // 所有情境一律這個標籤
 const PEOPLE_NOTE = '人數口徑（car agent = 4 人，其餘 = 1 人），基於 05_moi_sim 的 10,000 列抽樣。';
-const LEG_LABEL = 'Leg completion';
-const LEG_NOTE = '以移動段(leg)計，非人員撤離率；資料缺少 person_id。';
+const LEG_NOTE = '以移動段(leg)計，資料缺少 person_id，非嚴格的人員撤離率';
 
 export const useEvacuationCurve = (): EvacuationCurve => {
   const { dataUrl, evacuationRate } = useResolvedFiles();
@@ -53,7 +52,7 @@ export const useEvacuationCurve = (): EvacuationCurve => {
 
   return useMemo<EvacuationCurve>(() => {
     const people = evacuationRate === 'people_weighted';
-    const meta = { label: people ? PEOPLE_LABEL : evacuationRate ? LEG_LABEL : PEOPLE_LABEL, note: people ? PEOPLE_NOTE : LEG_NOTE };
+    const meta = { label: LABEL, note: people ? PEOPLE_NOTE : LEG_NOTE };
     if (!enabled) return { ...meta, kind: 'unavailable' };
     const tCol = arrowTable?.getChild('t_end');
     const wCol = arrowTable?.getChild('w');

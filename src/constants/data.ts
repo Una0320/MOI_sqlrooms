@@ -20,11 +20,12 @@ export type ScenarioType = 'mass_evacuation' | 'mixed_shelter' | 'priority_evac'
 export type Control = 'none' | 'network_control';
 export type Ratio = 10 | 20 | 40;
 
+// 分頁（UI）上顯示的情境與順序。'nearest_shelter'（evac_ratio*）的 manifest 與資料檔路徑都還在，
+// 只是暫時不放進分頁；要放回來只要把它加回這個陣列。
 export const SCENARIO_ORDER: readonly ScenarioType[] = [
   'mass_evacuation',
   'mixed_shelter',
   'priority_evac',
-  'nearest_shelter',
 ];
 export const SCENARIO_LABELS: Record<ScenarioType, string> = {
   mass_evacuation: '大規模撤離',
@@ -49,7 +50,7 @@ export type FileSet = {
   roadServiceUrl: string | null; //     05_moi_sim/road_service_*.geojson（尖峰小時靜態 V/C）
   // 左上角完成率的算法（見 hooks/useEvacuationRate.ts）：
   //   'people_weighted' — 「Evacuation rate」：一列 = 一個 agent，car agent 算 4 人、其餘 1 人（evac_ratio）
-  //   'leg_count'       — 「Leg completion」：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
+  //   'leg_count'       — 同樣顯示「Evacuation rate」，但 hover 說明以移動段計：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
   //                       （不是人員撤離率）
   //   null — 沒有軌跡資料的組合，不顯示
   evacuationRate: 'people_weighted' | 'leg_count' | null;

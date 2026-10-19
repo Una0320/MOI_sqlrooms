@@ -10,15 +10,28 @@ export type LOSLevel = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
 export const LOS_LEVELS: readonly LOSLevel[] = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-// 綠→黃→橘→紅→暗紅。A 級占絕大多數，alpha 壓低，免得整張地圖被綠線蓋滿、蓋掉真正壅塞的路段
-export const LOS_COLORS: Record<LOSLevel, [number, number, number, number]> = {
-  A: [34, 197, 94, 130],
-  B: [163, 230, 53, 190],
-  C: [250, 204, 21, 220],
-  D: [249, 115, 22, 235],
-  E: [239, 68, 68, 245],
-  F: [185, 28, 28, 255],
+// LOS A–F 色碼——**唯一來源**：圖例色塊（RoadServiceLegend）與地圖路段（useRoadServiceLayer）
+// 都從這裡取，不要在別處再寫一份。
+export const LOS_HEX: Record<LOSLevel, string> = {
+  A: '#44C23A',
+  B: '#1FB33B',
+  C: '#DFD34E',
+  D: '#DF9651',
+  E: '#D15528',
+  F: '#C22E00',
 };
+
+// 地圖上用的 RGBA（由 LOS_HEX 轉出）。alpha 全部統一，不再依等級調整，這樣地圖上的顏色
+// 才會跟圖例色塊一致（線寬細，A 級雖然占 99%，也不會把整張地圖蓋滿）。
+const LOS_ALPHA = 220;
+const hexToRgb = (hex: string): [number, number, number] => [
+  parseInt(hex.slice(1, 3), 16),
+  parseInt(hex.slice(3, 5), 16),
+  parseInt(hex.slice(5, 7), 16),
+];
+export const LOS_COLORS = Object.fromEntries(
+  LOS_LEVELS.map((los) => [los, [...hexToRgb(LOS_HEX[los]), LOS_ALPHA]]),
+) as Record<LOSLevel, [number, number, number, number]>;
 
 export const LOS_LABELS: Record<LOSLevel, string> = {
   A: 'V/C ≤ 0.50',

@@ -1,6 +1,6 @@
 import { LAYER_IDS } from '../constants/layers';
 import {
-  LOS_COLORS,
+  LOS_HEX,
   LOS_LABELS,
   LOS_LEVELS,
   ROAD_WIDTH_SAMPLES,
@@ -28,10 +28,9 @@ export const RoadServiceLegend = () => {
         <div className="flex flex-col gap-1">
           <span className="text-[10px] text-slate-500">LOS（V/C）</span>
           {LOS_LEVELS.map((los) => {
-            const [r, g, b] = LOS_COLORS[los];
             return (
               <div key={los} className="flex items-center gap-2">
-                <span className="w-6 h-1.5 rounded-full" style={{ background: `rgb(${r}, ${g}, ${b})` }} />
+                <span className="w-6 h-1.5 rounded-full" style={{ background: LOS_HEX[los] }} />
                 <span className="w-3 font-bold">{los}</span>
                 <span className="text-slate-400">{LOS_LABELS[los]}</span>
               </div>

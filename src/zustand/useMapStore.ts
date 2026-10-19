@@ -57,7 +57,7 @@ export const useMapStore = create<MapState>((set) => ({
   selectedModes: INITIAL_SELETED_MOBILITY_MODES_BITS,
   visibleLayers: INITIAL_VISIBLE_LAYERS,
   scenarioType: 'mass_evacuation',
-  ratio: 10,
+  ratio: 20, // 大規模撤離預設 pt20（road_service 目前只有 pt20）；ratio 目前沒有 UI，但 store 與 resolveFiles 保留
   networkControl: false,
 
   setTime: (t) => set({ time: t }),

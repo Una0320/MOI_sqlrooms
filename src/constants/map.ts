@@ -75,3 +75,14 @@ export const SHELTER_STATUS_COLORS: Record<string, [number, number, number, numb
   near_full: [249, 115, 22, 215],
   over_capacity: [220, 38, 38, 235],
 }
+
+// Shelter Capacity 圖例的列：順序、中文標籤與 load_ratio 範圍（實測 04_shelter_capacity 的 status 切點：
+// empty = 0、normal ≤ 0.7、crowded ≤ 0.9、near_full ≤ 1.0、over_capacity > 1.0）。顏色一律取自上面的
+// SHELTER_STATUS_COLORS，圖例與地圖共用同一份。
+export const SHELTER_STATUS_LEGEND: { status: keyof typeof SHELTER_STATUS_COLORS; label: string; range: string }[] = [
+  { status: 'empty', label: '空', range: '0%' },
+  { status: 'normal', label: '正常', range: '≤ 70%' },
+  { status: 'crowded', label: '擁擠', range: '70 – 90%' },
+  { status: 'near_full', label: '接近滿載', range: '90 – 100%' },
+  { status: 'over_capacity', label: '超載', range: '> 100%' },
+];

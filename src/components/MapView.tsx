@@ -19,6 +19,7 @@ import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
 import { evacuationRateAt, useEvacuationCurve } from '../hooks/useEvacuationRate';
 import { RoadServiceLegend } from './RoadServiceLegend';
+import { ShelterCapacityLegend } from './ShelterCapacityLegend';
 
 
 // CARTO 的 dark-matter-gl-style 底層 OSM 資料官方文件寫最慢一年才重建一次（快則 3–6 個月），
@@ -217,16 +218,12 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
 
   return (
     <div className="relative h-full w-full">
-      {/* 左上角資訊面板：Time / Zoom / 完成率。left-14：留出 MapLibre 的縮放按鈕（NavigationControl，
-          left-top 約 x:10–39），不然面板會蓋住它。數值用 #DF9651（對比：深色底圖上約 8.3:1，
-          最壞的淺色底圖也有 5.2:1，都過 WCAG AA 4.5:1），標籤維持白色。 */}
+      {/* 左上角資訊面板：Time / Zoom / Evacuation rate。left-14：留出 MapLibre 的縮放按鈕（NavigationControl，
+          left-top 約 x:10–39），不然面板會蓋住它。只有完成率的「數值」用 #DF9651（對比：深色底圖上約 8.3:1，
+          最壞的淺色底圖也有 5.2:1，都過 WCAG AA 4.5:1）；Time / Zoom 與所有標籤維持預設白色。 */}
       <div className="absolute top-5 left-14 z-10 bg-black/80 text-white px-3 py-2 rounded font-mono text-sm leading-snug">
-        <div>
-          Time: <span className="text-[#DF9651]">{formatDurationTo24Hour(time * 1000)}</span>
-        </div>
-        <div>
-          Zoom: <span className="text-[#DF9651]">{currentZoom.toFixed(2)}</span>
-        </div>
+        <div>Time: {formatDurationTo24Hour(time * 1000)}</div>
+        <div>Zoom: {currentZoom.toFixed(2)}</div>
         <div title={evacuationCurve.note} className="cursor-help">
           {evacuationCurve.label}:{' '}
           <span className="text-[#DF9651]">
@@ -235,8 +232,10 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
         </div>
       </div>
 
-      {/* Road Service legend：左下，Timebar（~105px 高 + bottom-5）之上 */}
-      <div className="absolute left-5 bottom-[150px] z-10">
+      {/* 左下角圖例堆疊：Shelter Capacity 在上、Road Service (LOS) 固定在最下面（貼著 Timebar 上方）。
+          flex-col + 以底邊定位：只開其中一個時，那一個仍貼在最下方；兩個都開時 Road Service 在下。 */}
+      <div className="absolute left-5 bottom-[150px] z-10 flex flex-col gap-2">
+        <ShelterCapacityLegend />
         <RoadServiceLegend />
       </div>
 
