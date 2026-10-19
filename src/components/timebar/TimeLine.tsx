@@ -271,31 +271,41 @@ export const TimeLine = () => {
             ))}
           </div>
         </div>
-        {/* 窗口本體（可整個左右拖曳平移）。白色把手停用後，窗口位置全靠這個元素顯示：
-            左右各一條 2px 白邊（相當於原本白色把手的位置，但只是視覺、不能拉寬度，游標是 grab）+ 淡白色填色；
-            minWidth 12px：15 分鐘的窗口只佔時間軸約 1%（約 11px），不設最小寬度的話幾乎看不到、也很難抓。 */}
+        {/* 窗口本體（可整個左右拖曳平移，游標 grab；不能拉寬度）。樣式維持原本的淡灰填色 + 青色細邊；
+            窗口的起點 / 終點由下面兩條「純視覺」的白色細條標示。
+            minWidth 12px：15 分鐘的窗口只佔時間軸約 1%（約 11px），不設最小寬度會很難抓。 */}
         <div 
-          className="absolute inset-y-0 box-border border-x-2 border-white bg-white/20 cursor-grab active:cursor-grabbing hover:bg-white/30 transition-colors z-10"
+          className="absolute inset-y-0 bg-gray-600/20 border-x border-cyan-500/50 cursor-grab active:cursor-grabbing hover:bg-gray-600/30 transition-colors z-10 backdrop-blur-[0.5px]"
           style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: 12 }}
           onPointerDown={(e) => handlePointerDown(e, 'range')}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         />
       </div>
-      <div
-        className="absolute block h-10 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
-        style={{ left: `${leftDisplayPct}%`, transform: 'translateX(-50%)' }}
-        onPointerDown={(e) => handlePointerDown(e, 'display-start')}
-        onPointerMove={handleDisplayTimeRangeMove}
-        onPointerUp={handlePointerUp}
-      />
-      <div
-        className="absolute block h-10 w-2 border border-slate-900 bg-slate-500 cursor-col-resize z-20"
-        style={{ left: `${leftDisplayPct + widthDisplayPct}%`, transform: 'translateX(-50%)' }}
-        onPointerDown={(e) => handlePointerDown(e, 'display-end')}
-        onPointerMove={handleDisplayTimeRangeMove}
-        onPointerUp={handlePointerUp}
-      />
+      {/* 最頭 / 最尾的灰色把手（顯示範圍 display-start / display-end）：刻意低調——視覺只是 2px 的細灰線，
+          高度跟時間軸外框一樣（h-8，不再上下突出）；程式邏輯與 8px 寬的透明感應區都沒動。 */}
+      {([['display-start', leftDisplayPct], ['display-end', leftDisplayPct + widthDisplayPct]] as const).map(([type, pct]) => (
+        <div
+          key={type}
+          className="absolute z-20 flex h-8 w-2 cursor-col-resize justify-center"
+          style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
+          onPointerDown={(e) => handlePointerDown(e, type)}
+          onPointerMove={handleDisplayTimeRangeMove}
+          onPointerUp={handlePointerUp}
+        >
+          <span className="pointer-events-none block h-full w-0.5 bg-slate-500/70" />
+        </div>
+      ))}
+      {/* 窗口起點 / 終點的白色細條——純視覺（pointer-events-none，不能拖曳、不改變寬度；寬度只用 Time window 按鈕）。
+          樣式沿用調細後的白色把手：視覺 4px、比時間軸外框上下各多 4px（h-10）、slate-200、1px 深色描邊。
+          放在灰色把手之後，所以窗口在時間軸最左邊時，白色細條會畫在灰色細線上面，不會被蓋住。 */}
+      {[leftPct, leftPct + widthPct].map((pct, i) => (
+        <span
+          key={i}
+          className="pointer-events-none absolute z-30 block h-10 w-1 rounded-sm bg-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]"
+          style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
+        />
+      ))}
       {/* ──────────── 白色把手停用說明 ────────────
           為什麼停用：窗口寬度現在只用 Time window 按鈕（15 / 30 / 60 分鐘）調整；
           「按鈕」與「拖曳把手」兩種調整方式並存太複雜，而且在時間軸起點處，白色把手會和灰色的顯示範圍把手重疊。
