@@ -1,9 +1,12 @@
+import { useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import { useShallow } from '@sqlrooms/room-shell';
 
 import { LAYER_CONFIG, type LayerId } from '../constants/layers';
 import { useMapStore } from '../zustand/useMapStore';
 
 export const LayerPanel = () => {
+  const [collapsed, setCollapsed] = useState(false);
   const { visibleLayers, toggleLayer, scenarioType } = useMapStore(
     useShallow((s) => ({
       visibleLayers: s.visibleLayers,
@@ -18,10 +21,18 @@ export const LayerPanel = () => {
 
   return (
     <div className="bg-[#2B2B38]/90 border border-slate-700 p-4 rounded-lg text-white flex flex-col gap-3 font-mono shadow-xl backdrop-blur-sm">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-700 pb-2">
-        Layers
-      </span>
-      {visibleConfig.map((layer) => {
+      <div className={`flex items-center justify-between ${collapsed ? '' : 'border-b border-slate-700 pb-2'}`}>
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Layers</span>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? '展開 Layers' : '收合 Layers'}
+          className="text-slate-400 hover:text-white cursor-pointer"
+        >
+          {collapsed ? <Plus size={14} /> : <Minus size={14} />}
+        </button>
+      </div>
+      {!collapsed && visibleConfig.map((layer) => {
         const isChecked = visibleLayers[layer.id] ?? false;
         const [r, g, b] = layer.color ?? [];
         return (

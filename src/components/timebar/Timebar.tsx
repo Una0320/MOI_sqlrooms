@@ -7,6 +7,7 @@ import { useMapStore } from "@/zustand/useMapStore";
 import { formatDurationTo24Hour } from "./utils";
 import { TimeLine } from "./TimeLine";
 import { AdjustTimeSpeedRatio } from "./AdjustTimeSpeedRatio";
+import { AdjustTimeWindow } from "./AdjustTimeWindow";
 import { useShallow } from "@sqlrooms/room-shell";
 
 export const Timebar = () => {
@@ -73,7 +74,8 @@ export const Timebar = () => {
         </div>
 
         {/* 靠右對齊倍速器 */}
-        <div className="ml-auto text-sm font-mono font-medium">
+        <div className="ml-auto flex items-center gap-2 text-sm font-mono font-medium">
+          <AdjustTimeWindow />
           <AdjustTimeSpeedRatio />
         </div>
       </div>

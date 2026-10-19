@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useMapStore } from "@/zustand/useMapStore";
+import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
 import { SCENARIO_CONFIG } from "@/constants/data";
@@ -139,9 +139,8 @@ export const TimeLine = () => {
       setViewTimeRange([minTime, adjustedMax]);
       setDisplayTimeRange([minTime, adjustedMax]); // 讓視窗一開始看見全貌
 
-      // 🌟 2. 將藍色把手 (TimeRange) 移到資料最前端，並設定 30 分鐘寬度
-      const INITIAL_WINDOW_SEC = 1800; // 30分鐘
-      const initialEnd = Math.min(minTime + INITIAL_WINDOW_SEC, adjustedMax);
+      // 🌟 2. 將藍色把手 (TimeRange) 移到資料最前端，並設定預設視窗寬度（15 分鐘）
+      const initialEnd = Math.min(minTime + DEFAULT_TIME_WINDOW_SEC, adjustedMax);
       setTimeRange([minTime, initialEnd]);
 
       // 🌟 3. 將地圖的光束時間也移過去！(不再從 0 開始)

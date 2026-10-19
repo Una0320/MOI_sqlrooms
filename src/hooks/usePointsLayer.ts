@@ -53,7 +53,7 @@ export const usePointsLayer = (
     useShallow((s) => ({
       time: s.time,
       selectedModes: s.selectedModes,
-      visible: s.visibleLayers[LAYER_IDS.POINTS] ?? true,
+      visible: s.visibleLayers[LAYER_IDS.TRIPS] ?? true,
     }))
   );
 

@@ -7,7 +7,6 @@ export const LAYER_IDS = {
   TRIPS: 'trips',
   HEATMAP: 'heatmap',
   OD_ARC: 'od-arc',
-  POINTS: 'points',
   STATIONS: 'stations',
   SHELTERS: 'shelters',
   STOP_COUNTS: 'stop-counts',
@@ -28,9 +27,8 @@ export type LayerConfig = {
 
 export const LAYER_CONFIG: readonly LayerConfig[] = [
   { id: LAYER_IDS.TRIPS, title: 'Trips · 移動軌跡', defaultVisible: true },
-  { id: LAYER_IDS.HEATMAP, title: 'Heatmap · 路徑密度', defaultVisible: false },
+  { id: LAYER_IDS.HEATMAP, title: 'Heatmap · 路徑流量', defaultVisible: false },
   { id: LAYER_IDS.OD_ARC, title: 'OD Arc · 起迄弧線', defaultVisible: false },
-  { id: LAYER_IDS.POINTS, title: 'Points · 位置點', defaultVisible: true },
   { id: LAYER_IDS.STATIONS, title: 'Stations · 公車/捷運站', defaultVisible: true, color: [255, 255, 255], scenario: 'mass_evacuation' },
   { id: LAYER_IDS.SHELTERS, title: 'Shelters · 避難所', defaultVisible: true, color: [236, 72, 153], scenario: 'shelter_in_place' },
   { id: LAYER_IDS.STOP_COUNTS, title: 'Stop Counts · 站點候車人潮', defaultVisible: false, scenario: 'mass_evacuation' },

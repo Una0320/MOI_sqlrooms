@@ -9,6 +9,9 @@ DisplayRange,使用者選定的觀測視窗,   "[7200, 43200]", 直方圖被放�
 TimeRange,   當前播放的 active 區間,"[12000, 13800]",藍色遮罩與兩個把手的位置
 Time,        地圖光束的當前時間,      13800,          通常等於 TimeRange[1]
  */
+// 播放視窗預設寬度（秒）：15 分鐘。切情境 / 載入資料時都回到這個寬度。
+export const DEFAULT_TIME_WINDOW_SEC = 900;
+
 interface MapState {
   time: number;
   timeRange: [number, number];
@@ -24,6 +27,7 @@ interface MapState {
   setTimeRange: (range: [number, number]) => void;
   togglePlay: () => void;
   setTimeScale: (scale: number) => void;
+  setTimeWindow: (sec: number) => void;
   toggleMode: (modeBit: number) => void;
   setIsPlaying: (playing: boolean) => void;
   setDisplayTimeRange: (range: [number, number]) => void;
@@ -34,7 +38,7 @@ interface MapState {
 
 export const useMapStore = create<MapState>((set) => ({
   time: 0, // 初始時間
-  timeRange: [0, 1800], // 初始播放區間，預設前 30 分鐘
+  timeRange: [0, DEFAULT_TIME_WINDOW_SEC], // 初始播放區間，預設前 15 分鐘
   displayTimeRange: [0, 86400],
   viewTimeRange: [0, 86400],
   isPlaying: false,
@@ -47,6 +51,12 @@ export const useMapStore = create<MapState>((set) => ({
   setTimeRange: (range) => set({ timeRange: range }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   setTimeScale: (scale) => set({ timeScale: scale }),
+  // 保持起點不動，把視窗終點改成 起點 + sec（不超過資料範圍），地圖光束時間跟著終點
+  setTimeWindow: (sec) => set((state) => {
+    const start = state.timeRange[0];
+    const end = Math.min(start + sec, state.displayTimeRange[1]);
+    return { timeRange: [start, end], time: end };
+  }),
   toggleMode: (modeBit) => set((state) => {
     const isSelected = state.selectedModes.includes(modeBit);
     return {
@@ -66,7 +76,7 @@ export const useMapStore = create<MapState>((set) => ({
   setScenarioType: (type) => set({
     scenarioType: type,
     time: 0,
-    timeRange: [0, 1800],
+    timeRange: [0, DEFAULT_TIME_WINDOW_SEC],
     isPlaying: false,
   }),
 }));
