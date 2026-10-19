@@ -31,6 +31,7 @@ export function CollapsibleChoice<T extends string | number>({
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mr-2">
           {title}
         </span>
+        {/* 「Custom」= 目前值不在任何預設選項內。時間窗口的白色把手已停用，目前不會出現非預設寬度，所以不會被觸發（邏輯保留，恢復把手後會再出現） */}
         {current?.label ?? "Custom"}
       </Button>
     );

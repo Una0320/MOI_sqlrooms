@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
+// 【白色把手已停用，見檔案下方「白色把手停用說明」】恢復時改回下面這一行（要加回 useState）：
+// import { useEffect, useMemo, useRef, useState } from "react";
 import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
@@ -70,8 +72,9 @@ export const TimeLine = () => {
 
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<string | null>(null); 
-  // 目前被抓住的把手（給把手「拖曳中加亮」用；isDragging 是 ref，改它不會重新渲染）
-  const [activeHandle, setActiveHandle] = useState<string | null>(null);
+  // 【白色把手已停用】目前被抓住的把手（給白色把手「拖曳中加亮」用；isDragging 是 ref，改它不會重新渲染）。
+  // 恢復白色把手時取消註解這一行（同時要把 useState 加回上面的 import）：
+  // const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const lastValueRef = useRef(timeRange[0]);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -165,7 +168,8 @@ export const TimeLine = () => {
     e.preventDefault();
     e.stopPropagation();
     isDragging.current = type;
-    setActiveHandle(type);
+    // 【白色把手已停用】恢復時取消註解：
+    // setActiveHandle(type);
     lastValueRef.current = getValueFromClientX(e.clientX);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -219,10 +223,12 @@ export const TimeLine = () => {
         }
         return;
       }
-  
+
+      /* 【白色把手已停用——拖曳「改變窗口寬度」的邏輯】詳見檔案下方「白色把手停用說明」。
+         上面 'range'（整個窗口平移）的分支沒有動。恢復白色把手時取消註解這一段：
       let nextStart = timeRange[0];
       let nextEnd = timeRange[1];
-  
+
       if (isDragging.current === 'start') {
         nextStart = Math.min(newVal, timeRange[1]);
         nextStart = Math.max(displayTimeRange[0], nextStart);
@@ -230,17 +236,19 @@ export const TimeLine = () => {
         nextEnd = Math.max(newVal, timeRange[0]);
         nextEnd = Math.min(displayTimeRange[1], nextEnd);
       }
-  
+
       if (nextStart !== timeRange[0] || nextEnd !== timeRange[1]) {
         setTimeRange([nextStart, nextEnd]);
       }
+      */
     });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     isDragging.current = null;
-    setActiveHandle(null);
+    // 【白色把手已停用】恢復時取消註解：
+    // setActiveHandle(null);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
@@ -285,10 +293,21 @@ export const TimeLine = () => {
         onPointerMove={handleDisplayTimeRangeMove}
         onPointerUp={handlePointerUp}
       />
-      {/* 白色把手（時間窗口的起點 / 終點）：視覺寬度 4px，原本是 8px（含 1px 深色邊）；
-          感應區是外層 12px 寬的透明容器（touch-none、cursor-col-resize），視覺變細不會更難抓。
-          內層的細條 pointer-events-none，所以按下 / 移動的事件目標一律是外層容器。
-          hover 或拖曳中：從 slate-200 變純白 + 外發光，讓使用者知道抓到了。 */}
+      {/* ──────────── 白色把手停用說明 ────────────
+          為什麼停用：窗口寬度現在只用 Time window 按鈕（15 / 30 / 60 分鐘）調整；
+          「按鈕」與「拖曳把手」兩種調整方式並存太複雜，而且在時間軸起點處，白色把手會和灰色的顯示範圍把手重疊。
+          停用範圍：只有下面這兩個白色把手（窗口起點 / 終點）與它們的「改變窗口寬度」拖曳邏輯。
+          沒有動到：窗口本體（整個窗口左右平移，handlePointerDown(e, 'range')）、灰色的顯示範圍把手（display-start / display-end）、
+          Time window 按鈕。
+          如何恢復（四處一起恢復）：
+            1. 取消註解下面這段 JSX（兩個白色把手的 .map）；
+            2. 取消註解 handlePointerMove 裡標示「白色把手已停用」的那一段（nextStart / nextEnd 的計算與 setTimeRange）；
+            3. 取消註解 const [activeHandle, setActiveHandle] = useState(...)，以及 handlePointerDown / handlePointerUp 裡
+               被註解的 setActiveHandle(type) / setActiveHandle(null)；
+            4. 檔案最上面的 import 改回含 useState 的那一行。
+          恢復時把手為已調細的樣式（視覺約 4px、感應區 12px 以上）：視覺細條 w-1（4px），外層透明感應區 w-3（12px），
+          hover 或拖曳中從 slate-200 變純白並加外發光；原本（調細之前）是 8px 寬、帶 1px 深色邊。 */}
+      {/*
       {([['start', leftPct], ['end', leftPct + widthPct]] as const).map(([type, pct]) => {
         const active = activeHandle === type;
         return (
@@ -310,6 +329,7 @@ export const TimeLine = () => {
           </div>
         );
       })}
+      */}
     </div>
   )
 }
