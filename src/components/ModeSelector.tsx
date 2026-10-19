@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { useMapStore } from '@/zustand/useMapStore';
+import { PANEL_FRAME } from '../constants/layout';
 import { AGENT_MODE_TRIP_COLORS, MOBILITY_MODE_BITS, ORDERED_MOBILITY_MODES } from '../constants/map';
 
 
@@ -10,7 +11,7 @@ export const ModeSelector = () => {
   const toggleMode = useMapStore((state) => state.toggleMode); // 直接訂閱 toggleMode 函數
 
   return (
-    <div className="bg-[#2B2B38]/90 border border-slate-700 p-3 rounded-lg text-white flex flex-col gap-2 font-mono shadow-xl backdrop-blur-sm">
+    <div className={`bg-[#2B2B38]/90 ${PANEL_FRAME} p-3 text-white flex flex-col gap-2 font-mono shadow-xl`}>
       <div className={`flex items-center justify-between ${collapsed ? '' : 'border-b border-slate-700 pb-2'}`}>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Mobility Modes</span>
         <button

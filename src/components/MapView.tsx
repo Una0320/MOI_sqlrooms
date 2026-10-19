@@ -4,6 +4,8 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
 import type * as arrow from 'apache-arrow';
 
+import { BASEMAP_STYLE } from '../constants/basemap';
+import { PANEL_FRAME } from '../constants/layout';
 import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM, MODE_BIT_LABELS } from '../constants/map';
 import { LAYER_IDS } from '../constants/layers';
 import { ArrowTripsLayer } from './custom_layer/arrowTripsLayer/ArrowTripsLayer';
@@ -18,25 +20,7 @@ import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
 import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
 import { evacuationRateAt, useEvacuationCurve } from '../hooks/useEvacuationRate';
-import { RoadServiceLegend } from './RoadServiceLegend';
-import { ShelterCapacityLegend } from './ShelterCapacityLegend';
 
-
-// CARTO 的 dark-matter-gl-style 底層 OSM 資料官方文件寫最慢一年才重建一次（快則 3–6 個月），
-// 淡江大橋這種新完工的建設即使 OSM 上已經有人畫了，也可能好幾個月看不到——改用 MapTiler
-// 的 dataviz-dark（專為深色資料視覺化設計），資料每週重建一次，新鮮度好很多。
-// 沒設定 VITE_MAPTILER_API_KEY 時 fallback 回 CARTO，避免沒申請 key 的人本機起不來。
-const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY as string | undefined;
-const MAP_STYLE = MAPTILER_API_KEY
-  ? `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_API_KEY}`
-  : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-
-if (!MAPTILER_API_KEY) {
-  console.warn(
-    '[MapView] VITE_MAPTILER_API_KEY 未設定，底圖 fallback 回 CARTO dark-matter（資料較舊）。' +
-    '到 https://cloud.maptiler.com/account/keys/ 申請免費 key 後填進 .env 即可換成每週更新的 MapTiler 底圖。'
-  );
-}
 
 function DeckGLOverlay(props: MapboxOverlayProps) {
   const overlay = useControl(() => new DeckOverlay(props));
@@ -218,10 +202,10 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
 
   return (
     <div className="relative h-full w-full">
-      {/* 左上角資訊面板：Time / Zoom / Evacuation rate。left-14：留出 MapLibre 的縮放按鈕（NavigationControl，
+      {/* 左上角資訊面板：Time / Zoom / Evac Rate。left-14：留出 MapLibre 的縮放按鈕（NavigationControl，
           left-top 約 x:10–39），不然面板會蓋住它。只有完成率的「數值」用 #DF9651（對比：深色底圖上約 8.3:1，
           最壞的淺色底圖也有 5.2:1，都過 WCAG AA 4.5:1）；Time / Zoom 與所有標籤維持預設白色。 */}
-      <div className="absolute top-5 left-14 z-10 bg-black/80 text-white px-3 py-2 rounded font-mono text-sm leading-snug">
+      <div className={`absolute top-5 left-14 z-10 bg-black/80 text-white px-3 py-2 font-mono text-sm leading-snug ${PANEL_FRAME}`}>
         <div>Time: {formatDurationTo24Hour(time * 1000)}</div>
         <div>Zoom: {currentZoom.toFixed(2)}</div>
         <div title={evacuationCurve.note} className="cursor-help">
@@ -232,16 +216,9 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
         </div>
       </div>
 
-      {/* 左下角圖例堆疊：Shelter Capacity 在上、Road Service (LOS) 固定在最下面（貼著 Timebar 上方）。
-          flex-col + 以底邊定位：只開其中一個時，那一個仍貼在最下方；兩個都開時 Road Service 在下。 */}
-      <div className="absolute left-5 bottom-[150px] z-10 flex flex-col gap-2">
-        <ShelterCapacityLegend />
-        <RoadServiceLegend />
-      </div>
-
       <Map
         initialViewState={lastViewState}
-        mapStyle={MAP_STYLE}
+        mapStyle={BASEMAP_STYLE}
         onMove={handleMove}
         minZoom={MAP_MIN_ZOOM}
         maxZoom={MAP_MAX_ZOOM}

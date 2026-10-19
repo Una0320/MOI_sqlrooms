@@ -49,8 +49,8 @@ export type FileSet = {
   shelterCapacityUrl: string | null; // 04_shelter_capacity
   roadServiceUrl: string | null; //     05_moi_sim/road_service_*.geojson（尖峰小時靜態 V/C）
   // 左上角完成率的算法（見 hooks/useEvacuationRate.ts）：
-  //   'people_weighted' — 「Evacuation rate」：一列 = 一個 agent，car agent 算 4 人、其餘 1 人（evac_ratio）
-  //   'leg_count'       — 同樣顯示「Evacuation rate」，但 hover 說明以移動段計：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
+  //   'people_weighted' — 「Evac Rate」：一列 = 一個 agent，car agent 算 4 人、其餘 1 人（evac_ratio）
+  //   'leg_count'       — 同樣顯示「Evac Rate」，但 hover 說明以移動段計：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
   //                       （不是人員撤離率）
   //   null — 沒有軌跡資料的組合，不顯示
   evacuationRate: 'people_weighted' | 'leg_count' | null;

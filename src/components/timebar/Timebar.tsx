@@ -2,6 +2,7 @@ import { Pause, Play } from "lucide-react";
 // 確保 shadcn/ui 的路徑正確
 import { Button } from "@/components/ui/button"; 
 import { Card } from "@/components/ui/card"; 
+import { PANEL_FRAME } from "@/constants/layout";
 
 import { useMapStore } from "@/zustand/useMapStore";
 import { formatDurationTo24Hour } from "./utils";
@@ -47,7 +48,7 @@ export const Timebar = () => {
   return (
     // 🌟 3. 調整 shadcn Card 樣式，加入半透明黑與邊框，融入 Deck.gl 深色地圖
     // padding/margin 縮小一點，讓 Timebar 整體矮一些——小螢幕時比較不容易蓋到右上角面板
-    <Card className="p-2 gap-0 mt-0 select-none w-full bg-[#2B2B38]/90 border-slate-700 shadow-xl backdrop-blur-md">
+    <Card className={`p-2 gap-0 mt-0 select-none w-full bg-[#2B2B38]/90 ring-0 shadow-xl ${PANEL_FRAME}`}>
       <div className="flex items-center gap-3 mb-2">
 
         {/* 🌟 4. 使用 shadcn Button */}

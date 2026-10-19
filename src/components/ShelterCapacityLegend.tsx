@@ -1,4 +1,5 @@
 import { LAYER_IDS } from '../constants/layers';
+import { PANEL_FRAME } from '../constants/layout';
 import { SHELTER_STATUS_COLORS, SHELTER_STATUS_LEGEND } from '../constants/map';
 import { useResolvedFiles } from '../hooks/useResolvedFiles';
 import { useMapStore } from '../zustand/useMapStore';
@@ -12,7 +13,7 @@ export const ShelterCapacityLegend = () => {
   if (!visible || !shelterCapacityUrl) return null;
 
   return (
-    <div className="bg-[#2B2B38]/90 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs shadow-xl backdrop-blur-sm">
+    <div className={`bg-[#2B2B38]/90 ${PANEL_FRAME} p-3 text-white font-mono text-xs shadow-xl`}>
       <div className="font-bold uppercase tracking-wider text-slate-400 mb-2">
         Shelter Capacity · 避難所飽和率
       </div>

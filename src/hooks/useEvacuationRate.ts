@@ -15,7 +15,7 @@ import { useResolvedFiles } from './useResolvedFiles';
 //     walk 的 agent）；若以後出現混合列，整個 agent 算 4。
 //     ⚠ 基於 05_moi_sim 的 10,000 列抽樣（evac10 抽 10,000/10,510，evac40 只抽 10,000/40,133），
 //     百分比假設抽樣是均勻的；絕對人數不是全量。
-//   'leg_count'（pt*）→ 標籤同樣是「Evacuation rate」，每列權重 1：
+//   'leg_count'（pt*）→ 標籤同樣是「Evac Rate」，每列權重 1：
 //     pt 的列是 leg（一段移動，agent 可有最多 12 段），05 又沒有 person_id，無法判定一個人是否走完
 //     全部行程，所以這是「以移動段計」的比率，不是嚴格的人員撤離率，靠 hover 提示講清楚。
 export type EvacuationCurve = {
@@ -32,7 +32,8 @@ export type EvacuationCurve = {
     }
 );
 
-const LABEL = 'Evacuation rate'; // 所有情境一律這個標籤
+// ⚠ 面板標籤固定為 'Evac Rate'（E、R 大寫，中間一個空格）——使用者明確指定，不要改字樣、大小寫或字級。
+const LABEL = 'Evac Rate';
 const PEOPLE_NOTE = '人數口徑（car agent = 4 人，其餘 = 1 人），基於 05_moi_sim 的 10,000 列抽樣。';
 const LEG_NOTE = '以移動段(leg)計，資料缺少 person_id，非嚴格的人員撤離率';
 

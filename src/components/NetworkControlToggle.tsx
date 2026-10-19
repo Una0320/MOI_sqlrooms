@@ -2,6 +2,7 @@ import { useShallow } from '@sqlrooms/room-shell';
 
 import { Switch } from '@/components/ui/switch';
 import { NO_DATA_HINT, isAvailable } from '../constants/data';
+import { PANEL_FRAME } from '../constants/layout';
 import { useMapStore } from '../zustand/useMapStore';
 
 // 路網管制（Network Control）開關：開啟時所有情境改用管制版模擬結果。
@@ -22,7 +23,7 @@ export const NetworkControlToggle = () => {
   return (
     <label
       title={disabled ? NO_DATA_HINT : undefined}
-      className={`bg-[#2B2B38]/90 border border-slate-700 px-3 py-2 rounded-lg text-white flex items-center justify-between gap-2 font-mono shadow-xl backdrop-blur-sm ${
+      className={`bg-[#2B2B38]/90 ${PANEL_FRAME} px-3 py-2 text-white flex items-center justify-between gap-2 font-mono shadow-xl ${
         disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
       }`}
     >

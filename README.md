@@ -31,9 +31,9 @@
 | **動態時間軸 (Timebar)** | 雙層區間控制 (Display/Active Range) | 提供專業級的數據觀測解析度，支援區間平移 (Panning) |
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
 | **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關，由 manifest 決定每個組合有哪些檔案（ratio 預設 20，目前沒有 UI；就近避難 evac_ratio 的 manifest 與資料路徑保留，只是不在分頁上） | 沒資料的分頁、圖層一律 disabled 並提示（「資料尚未提供」／「此組合無資料」），不隱藏；切換即時重載並重置時間軸 |
-| **完成率 (Evacuation rate)** | 左上角 `Evacuation rate`，累計值、二分搜尋查表；evac_ratio 用人數口徑（car=4），pt 以移動段(leg)計，hover 說明資料缺 person_id、非嚴格的人員撤離率 | 看撤離進度隨時間的變化 |
+| **完成率 (Evac Rate)** | 左上角 `Evac Rate`（標籤固定這個寫法），累計值、二分搜尋查表；evac_ratio 用人數口徑（car=4），pt 以移動段(leg)計，hover 說明資料缺 person_id、非嚴格的人員撤離率 | 看撤離進度隨時間的變化 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
-| **面板配置** | 右上 Network Control 滑動開關 + Mobility Modes + Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evacuation rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 101px 高 | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
+| **面板配置** | 右上 Network Control 滑動開關 + Mobility Modes + Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evac Rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 103px 高，與圖例底邊對齊（圖例顯示時 Timeline 左緣右移到圖例右側）；所有面板統一 1px 半透明淺色邊線 + backdrop-blur | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
 | **圖層 Tooltip** | Stop-Counts 候車泡泡／Shelter-Capacity 飽和率圈都可 hover | 不用另外查表就能核對站點候車人數與避難所收容飽和度 |
 | **道路服務水準 (Road Service)** | 靜態尖峰 V/C：線色依 LOS A–F、線寬依 √log(1+V/C)，圖層開啟時顯示 legend（LOS 色碼 A #44C23A／B #1FB33B／C #DFD34E／D #DF9651／E #D15528／F #C22E00，圖例與地圖共用同一組常數） | 一眼看出壅塞路段；放在所有圖層最底層當背景。資料來源 `05_moi_sim/road_service_<情境>.geojson`，目前只有 pt20 一份，預設的大規模撤離（ratio 20）可勾，沒有檔的組合該選項會 disabled 並標「此組合無資料」 |
 | **時間窗口 / 倍速** | Time window（15/30/60 分鐘，拖曳把手為 Custom）與 Speed（x30/x60/x120/x240）各收成單一按鈕，點開才展開 | 時間軸面板更精簡 |
@@ -56,6 +56,8 @@ VITE_MAPTILER_API_KEY=
 實際會讀哪些檔案（trips / OD arc / 站點候車人潮 / 避難所容量 / Road Service），是由 `src/constants/data.ts` 的 manifest（`resolveFiles`）依畫面上選的情境、ratio 與路網管制決定，不用另外在 `.env` 裡指定檔名。
 
 `VITE_MAPTILER_API_KEY` 是選填的底圖來源設定：到 [MapTiler](https://cloud.maptiler.com/account/keys/) 免費申請一組 key 填進去，地圖底圖會換成 MapTiler 的 `dataviz-dark` 樣式（OSM 資料每週重建一次）；不填的話會 fallback 回原本的 CARTO `dark-matter-gl-style`（該底圖官方文件寫最慢一年才更新一次，新完工的路橋等建設可能好幾個月都看不到）。
+
+底圖設定集中在 `src/constants/basemap.ts`。開發時（`yarn dev`）可以在網址加 `?basemap=<名稱>` 試不同底圖：`current`（現行，預設）／`dark`（CARTO dark-matter 無文字）／`positron`（CARTO 淺色）／`nlsc`（國土測繪中心 EMAP 點陣圖磚，已降彩度與亮度）。試過的結論：`dark` 對比最高但沒有地名、`positron` 太亮（白色軌跡會消失，不適合）、`nlsc` 底圖文字太雜；預設仍維持 `current`，等選定後再改。
 
 ### 2. 安裝系統依賴
 請確保你的環境已安裝 Node.js，然後執行以下指令：

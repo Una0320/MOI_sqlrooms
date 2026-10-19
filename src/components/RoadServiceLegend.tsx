@@ -1,4 +1,5 @@
 import { LAYER_IDS } from '../constants/layers';
+import { PANEL_FRAME } from '../constants/layout';
 import {
   LOS_HEX,
   LOS_LABELS,
@@ -20,7 +21,7 @@ export const RoadServiceLegend = () => {
   if (!visible || !roadServiceUrl) return null;
 
   return (
-    <div className="bg-[#2B2B38]/90 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs shadow-xl backdrop-blur-sm">
+    <div className={`bg-[#2B2B38]/90 ${PANEL_FRAME} p-3 text-white font-mono text-xs shadow-xl`}>
       <div className="font-bold uppercase tracking-wider text-slate-400 mb-2">
         Road Service · 道路服務水準
       </div>

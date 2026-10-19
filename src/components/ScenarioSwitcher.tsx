@@ -1,6 +1,7 @@
 import { useShallow } from '@sqlrooms/room-shell';
 
 import { useMapStore } from '@/zustand/useMapStore';
+import { PANEL_FRAME } from '@/constants/layout';
 import {
   NOT_PROVIDED_HINT,
   SCENARIO_LABELS,
@@ -21,7 +22,7 @@ export const ScenarioSwitcher = () => {
   const control = networkControl ? 'network_control' : 'none';
 
   return (
-    <div className="flex items-center bg-[#2B2B38]/90 border border-slate-700 rounded-lg p-1 gap-1 shadow-xl backdrop-blur-sm font-mono">
+    <div className={`flex items-center bg-[#2B2B38]/90 ${PANEL_FRAME} p-1 gap-1 shadow-xl font-mono`}>
       {SCENARIO_ORDER.map((type) => {
         const disabled = !isScenarioAvailable(type, control);
         const active = scenarioType === type;

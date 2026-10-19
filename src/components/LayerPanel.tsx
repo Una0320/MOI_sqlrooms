@@ -3,6 +3,7 @@ import { Minus, Plus } from 'lucide-react';
 import { useShallow } from '@sqlrooms/room-shell';
 
 import { NO_DATA_HINT } from '../constants/data';
+import { PANEL_FRAME } from '../constants/layout';
 import { LAYER_CONFIG, type LayerId } from '../constants/layers';
 import { useResolvedFiles } from '../hooks/useResolvedFiles';
 import { useMapStore } from '../zustand/useMapStore';
@@ -18,7 +19,7 @@ export const LayerPanel = () => {
   const files = useResolvedFiles();
 
   return (
-    <div className="bg-[#2B2B38]/90 border border-slate-700 p-3 rounded-lg text-white flex flex-col gap-2 font-mono shadow-xl backdrop-blur-sm">
+    <div className={`bg-[#2B2B38]/90 ${PANEL_FRAME} p-3 text-white flex flex-col gap-2 font-mono shadow-xl`}>
       <div className={`flex items-center justify-between ${collapsed ? '' : 'border-b border-slate-700 pb-2'}`}>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Layers</span>
         <button
