@@ -114,6 +114,32 @@ yarn preview  # 本機預覽 build 出來的 dist/
 * **Timebar 依 mode 過濾直方圖**: 目前 `TimeLine.tsx` 的直方圖 query 只用 `timestamps` 統計每個 bin 的 agent 數量，未讀取 `modes` 欄位，也未接上 `selectedModes` state；勾選/取消 ModeSelector 的運具不會影響時間軸下方的長條圖分布。
   * 方案 A（SQL 端）：query 依 `selectedModes` 動態組 `WHERE modes ...`，直方圖只統計符合的 agent。
   * 方案 B（JS 端）：一次撈出 timestamp 對應的 mode，前端依 `selectedModes` 重新計算直方圖，避免每次切換都重打 DuckDB。
-* **混合避難／優先疏散／路網管制資料**: 這三者目前沒有任何檔案（manifest 全 `null`，分頁與 Network Control 開關 disabled）。交付後在 `data.ts` 的 manifest 加一筆即可，不用改 UI。
+* **混合避難／優先疏散／路網管制資料（等數據工程確認後補檔）**: 這三者目前沒有任何檔案（manifest 全 `null`，分頁與 Network Control 開關 disabled）。UI 與圖層邏輯都已經由 manifest 驅動，**交付後只要在 `src/constants/data.ts` 的 `MANIFEST` 加對應的一筆，不用改 UI**。下面是先定義好的接口與檔案清單，**檔名全部是「暫定」，以數據工程最後確認為準**。
+  * **接口（不用新開，沿用現有的）**
+    * 查檔：`resolveFiles({ scenario, control, ratio }) → FileSet`（`data.ts`）。key 是 `scenario|control|ratio`，沒列在 manifest 的組合一律回傳全 `null`。
+    * `scenario` 值：`mixed_shelter`（混合避難）、`priority_evac`（優先疏散）；`control` 值：`none` / `network_control`；`ratio`：`10 | 20 | 40`。
+    * `FileSet` 每個欄位各自可為 `null`，圖層可不可用只看對應 url 是不是 `null`（`LAYER_CONFIG[].requires`）：`dataUrl`、`odDataUrl`、`stopCountsUrl`、`shelterCapacityUrl`、`roadServiceUrl`，另外 `evacuationRate` 要指定算法（`'people_weighted'` / `'leg_count'`）。
+    * 讀取：所有 hook 都經過 `hooks/useResolvedFiles.ts` 拿 url，不直接讀 manifest。
+    * 讀檔位置：url = `VITE_DUCKDB_CONNECTION_STRING`（預設 `http://localhost:7780`）+ 下表的相對路徑，伺服器要支援 Range 與 CORS（跟現有資料相同）。
+  * **每個情境需要的檔案（相對於資料根目錄；`<tag>` 為待確認的檔名前綴）**
+
+    | 檔案用途 | FileSet 欄位 | 暫定路徑 | 必要？ |
+    |:--|:--|:--|:--|
+    | 軌跡（trips / 直方圖 / heatmap / Evac Rate） | `dataUrl` | `05_moi_sim/abm_format_outcome_10000_<tag><ratio>.parquet` | **必要**（沒有它整個組合視為無資料） |
+    | OD 起訖弧線 | `odDataUrl` | `05_moi_sim/abm_od_arc_outcome_10000_<tag><ratio>.parquet` | 選用 |
+    | 站點候車人潮 | `stopCountsUrl` | `03_stop_counts/stop_counts_<tag><ratio>.parquet` | 選用（有大眾運輸才有） |
+    | 避難所飽和率 | `shelterCapacityUrl` | `04_shelter_capacity/shelter_capacity_<tag><ratio>.parquet` | 選用（**驗證 Shelter Capacity 圖層要靠這個**） |
+    | 道路服務水準 | `roadServiceUrl` | `05_moi_sim/road_service_<tag><ratio>.geojson` | 選用 |
+    | Evac Rate 算法 | `evacuationRate` | （不是檔案，在 manifest 指定） | 有 `dataUrl` 就要填 |
+
+    * 路網管制版（`control = network_control`）：同樣的檔案各一份，檔名建議在 `<tag><ratio>` 後加 `_nc`（暫定）。需要 `NetworkControlToggle` 解除停用的條件是「該情境至少一個 ratio 有管制版 `dataUrl`」。
+  * **待數據工程確認的項目**
+    1. 混合避難、優先疏散各自的檔名前綴 `<tag>`（現有的是 `pt`、`evac_ratio`）。
+    2. 這兩個情境的 `ratio` 是否仍是 10/20/40，意義是否與 `pt` 相同（Timeline 的 ratio 選擇器標籤由 `data.ts` 的 `RATIO_LABELS` 指定，沒填就只顯示 10/20/40）。
+    3. 每個情境有哪些選用檔案（候車人潮、避難所飽和率、道路服務水準）；目前只有 `evac_ratio*` 有避難所飽和率，`pt*` 有候車人潮。
+    4. `evacuationRate` 用哪個口徑：有 `person_id` 且一列一人就可以用人數口徑；跟 `pt*` 一樣以 leg 為列則用 `leg_count`。
+    5. 檔案內欄位是否維持現有契約（軌跡：`paths` / `timestamps` / `modes`；避難所：`shelter_id` / `shelter_name` / `capacity` / `timestamps` / `current_count` / `load_ratio` / `status` / `X` / `Y`）。欄位有變就要改對應 hook 的 SQL。
+    6. 「就近避難」（`evac_ratio*`）的資料是否改歸給這兩個情境之一；目前它的 manifest 與檔案路徑保留，但不在分頁（`SCENARIO_ORDER`）裡。
+  * **拿到檔案後的步驟**：(1) 把檔案放進資料根目錄；(2) 在 `data.ts` 的 `MANIFEST` 加 `{ scenario, control, ratio }` 對應的 `FileSet`（檔案沒有的欄位保持 `null`）；(3) 若要顯示 ratio 標籤，填 `RATIO_LABELS[scenario]`；(4) 重新整理，分頁自動啟用，各 layer 依 url 是否為 `null` 自動啟用或停用，不用改 UI。
 * **道路服務水準圖層補資料**: 圖層已接上（`useRoadServiceLayer`），但交付批次只有 `road_service_pt20.geojson`，所以只有「大規模撤離」ratio 20 可用，其他 ratio 與情境的勾選框 disabled。拿到其他檔案後補進 manifest 的 `roadServiceUrl` 即可。
 * **`01_trajectory` 逐運具拆檔**: 目前 trips/OD 都是走 `05_moi_sim` 的相容格式（單檔含全部運具），`01_trajectory`（每運具獨立、欄位更豐富，例如 `dist_road_m`/`is_teleport_walk`）還沒用上。
