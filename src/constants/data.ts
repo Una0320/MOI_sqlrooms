@@ -1,4 +1,6 @@
-// 資料來源設定：base URL 從環境變數推導，實際檔名依「情境類型」查表（見 SCENARIO_CONFIG）。
+// 資料來源設定：base URL 從環境變數推導，實際檔案依「情境 × 路網管制 × 規模(ratio)」查 manifest
+// （見 resolveFiles）。
+
 export const DATA_BASE_URL =
   import.meta.env.VITE_DUCKDB_CONNECTION_STRING || 'http://localhost:7780';
 
@@ -11,35 +13,96 @@ export const BUS_STOPS_URL = urlFor('02_points/bus_stops.csv');
 export const METRO_STATIONS_URL = urlFor('02_points/metro_stations.csv');
 export const SHELTERS_URL = urlFor('02_points/shelters.csv');
 
-export type ScenarioType = 'shelter_in_place' | 'mass_evacuation';
+// ───────────────────────── 維度 ─────────────────────────
 
-export type ScenarioFileSet = {
-  label: string;
-  subScenario: string;
-  dataUrl: string;
-  odDataUrl: string;
-  // 兩者依情境互斥（pt* 只有 stopCountsUrl、evac_ratio* 只有 shelterCapacityUrl），
-  // 用不到的那個是 null；對應 hook 看到 null 會查一個保證 0 列的 SQL，不會因為檔案不存在而炸掉。
-  stopCountsUrl: string | null;
-  shelterCapacityUrl: string | null;
+// 大規模撤離 = pt*（原「大規模疏散」）；就近避難 = evac_ratio*（原「就地避難」，暫時保留）；
+// 混合避難 / 優先疏散 目前沒有任何資料檔（manifest 全 null、分頁 disabled）。
+export type ScenarioType = 'mass_evacuation' | 'mixed_shelter' | 'priority_evac' | 'nearest_shelter';
+export type Control = 'none' | 'network_control';
+export type Ratio = 10 | 20 | 40;
+
+export const SCENARIO_ORDER: readonly ScenarioType[] = [
+  'mass_evacuation',
+  'mixed_shelter',
+  'priority_evac',
+  'nearest_shelter',
+];
+export const SCENARIO_LABELS: Record<ScenarioType, string> = {
+  mass_evacuation: '大規模撤離',
+  mixed_shelter: '混合避難',
+  priority_evac: '優先疏散',
+  nearest_shelter: '就近避難',
+};
+export const RATIOS: readonly Ratio[] = [10, 20, 40];
+
+export type FileKey = { scenario: ScenarioType; control: Control; ratio: Ratio };
+
+// ───────────────────────── manifest ─────────────────────────
+
+// 每個欄位各自可為 null：圖層可用與否只看對應 url 是不是 null，不綁情境、
+// 也不假設 stopCounts 與 shelterCapacity 互斥（現在只是剛好 pt 有前者、evac_ratio 有後者）。
+// null ＝「這個組合沒有這份資料」（可能是設計上不存在，也可能是還沒交付），不是忘了給。
+export type FileSet = {
+  dataUrl: string | null; //            05_moi_sim 軌跡（trips / 直方圖 / heatmap / 撤離率）
+  odDataUrl: string | null; //          05_moi_sim OD 飛線
+  stopCountsUrl: string | null; //      03_stop_counts
+  shelterCapacityUrl: string | null; // 04_shelter_capacity
+  roadServiceUrl: string | null; //     05_moi_sim/road_service_*.geojson（尖峰小時靜態 V/C）
+  busStopsUrl: string | null; //        02_points 站點標記（Stations 圖層；公車）
+  metroStationsUrl: string | null; //   02_points 站點標記（Stations 圖層；捷運）
+  sheltersUrl: string | null; //        02_points 避難所標記（Shelters 圖層）
 };
 
-// 兩種頂層情境類型各自固定選一個子情境（10）代表；20/40 之後要做成下拉選單可以在這裡擴充成清單。
-export const SCENARIO_CONFIG: Record<ScenarioType, ScenarioFileSet> = {
-  mass_evacuation: {
-    label: '大規模疏散',
-    subScenario: 'pt10',
-    dataUrl: urlFor('05_moi_sim/abm_format_outcome_10000_pt10.parquet'),
-    odDataUrl: urlFor('05_moi_sim/abm_od_arc_outcome_10000_pt10.parquet'),
-    stopCountsUrl: urlFor('03_stop_counts/stop_counts_pt10.parquet'),
-    shelterCapacityUrl: null,
-  },
-  shelter_in_place: {
-    label: '就地避難',
-    subScenario: 'evac_ratio10',
-    dataUrl: urlFor('05_moi_sim/abm_format_outcome_10000_evac_ratio10.parquet'),
-    odDataUrl: urlFor('05_moi_sim/abm_od_arc_outcome_10000_evac_ratio10.parquet'),
-    stopCountsUrl: null,
-    shelterCapacityUrl: urlFor('04_shelter_capacity/shelter_capacity_evac_ratio10.parquet'),
-  },
+const EMPTY: FileSet = {
+  dataUrl: null,
+  odDataUrl: null,
+  stopCountsUrl: null,
+  shelterCapacityUrl: null,
+  roadServiceUrl: null,
+  busStopsUrl: null,
+  metroStationsUrl: null,
+  sheltersUrl: null,
 };
+
+const keyOf = (k: FileKey) => `${k.scenario}|${k.control}|${k.ratio}`;
+
+// 目前交付批次（20260916）有的資料；沒列在這裡的組合一律是 EMPTY。
+// 之後交付新檔（管制版、混合避難、優先疏散、其他 ratio 的 road_service…）只要在這裡加一筆。
+const MANIFEST: Record<string, FileSet> = {};
+for (const r of RATIOS) {
+  // 大規模撤離（pt*）：有候車人潮與站點；沒有避難所飽和率（旅次終點不是避難所，README §5）。
+  // road_service 只有 pt20 一份。
+  MANIFEST[keyOf({ scenario: 'mass_evacuation', control: 'none', ratio: r })] = {
+    ...EMPTY,
+    dataUrl: urlFor(`05_moi_sim/abm_format_outcome_10000_pt${r}.parquet`),
+    odDataUrl: urlFor(`05_moi_sim/abm_od_arc_outcome_10000_pt${r}.parquet`),
+    stopCountsUrl: urlFor(`03_stop_counts/stop_counts_pt${r}.parquet`),
+    roadServiceUrl: r === 20 ? urlFor('05_moi_sim/road_service_pt20.geojson') : null,
+    busStopsUrl: BUS_STOPS_URL,
+    metroStationsUrl: METRO_STATIONS_URL,
+  };
+  // 就近避難（evac_ratio*）：有避難所飽和率；零大眾運輸所以沒有候車人潮（README §5）。
+  MANIFEST[keyOf({ scenario: 'nearest_shelter', control: 'none', ratio: r })] = {
+    ...EMPTY,
+    dataUrl: urlFor(`05_moi_sim/abm_format_outcome_10000_evac_ratio${r}.parquet`),
+    odDataUrl: urlFor(`05_moi_sim/abm_od_arc_outcome_10000_evac_ratio${r}.parquet`),
+    shelterCapacityUrl: urlFor(`04_shelter_capacity/shelter_capacity_evac_ratio${r}.parquet`),
+    sheltersUrl: SHELTERS_URL,
+  };
+}
+
+export const resolveFiles = (key: FileKey): FileSet => MANIFEST[keyOf(key)] ?? EMPTY;
+
+// 這個組合有沒有軌跡資料（所有圖層都建立在軌跡之上，沒有就視為整個組合無資料）
+export const isAvailable = (key: FileKey): boolean => resolveFiles(key).dataUrl !== null;
+
+export const availableRatios = (scenario: ScenarioType, control: Control): Ratio[] =>
+  RATIOS.filter((ratio) => isAvailable({ scenario, control, ratio }));
+
+// 分頁是否可點：該情境在目前的管制設定下至少有一個 ratio 有資料
+export const isScenarioAvailable = (scenario: ScenarioType, control: Control): boolean =>
+  availableRatios(scenario, control).length > 0;
+
+// UI 提示文字
+export const NO_DATA_HINT = '此組合無資料';
+export const NOT_PROVIDED_HINT = '資料尚未提供';

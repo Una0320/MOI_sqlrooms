@@ -17,6 +17,8 @@ import { usePointsLayer, ZOOM_THRESHOLD } from '../hooks/usePointsLayer';
 import { useFacilityPointsLayer } from '../hooks/useFacilityPointsLayer';
 import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
 import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
+import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
+import { RoadServiceLegend } from './RoadServiceLegend';
 
 
 // CARTO 的 dark-matter-gl-style 底層 OSM 資料官方文件寫最慢一年才重建一次（快則 3–6 個月），
@@ -126,6 +128,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   const facilityLayers = useFacilityPointsLayer();
   const stopCountsLayers = useStopCountsLayer(currentZoom);
   const shelterCapacityLayers = useShelterCapacityLayer();
+  const roadServiceLayer = useRoadServiceLayer(currentZoom);
   
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
@@ -178,10 +181,12 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:heatmap → od-arc → facilities → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
+  // 順序:road-service → heatmap → od-arc → facilities → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
   // ⚠ points 刻意排在 stop-counts/shelter-capacity 之前：代理人剛好停在站點/避難所座標上時，
   // 讓候車人潮泡泡/飽和率圈蓋在 points 上面（泡泡本來就比較大、代表匯總資訊，蓋掉底下單點
   // 才合理），不然兩個顏色相近、不透明度都調高的圓疊在一起，會變成一個圓「缺一角」的詭異形狀
+  // road-service 放最底層（heatmap 之下）：靜態尖峰路網背景，不能蓋住動態圖層
+  if (roadServiceLayer) layers.push(roadServiceLayer);
   layers.push(...heatmapLayers);
   if (odArcLayer) layers.push(odArcLayer);
   layers.push(...facilityLayers);
@@ -223,6 +228,11 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
       <div className="absolute top-5 left-5 z-10 bg-black/80 text-white p-3 rounded font-mono">
         <div>Time: {formatDurationTo24Hour(time * 1000)}</div>
         <div>Zoom: {currentZoom.toFixed(2)}</div>
+      </div>
+
+      {/* Road Service legend：左下，Timebar（~177px 高 + bottom-5）之上 */}
+      <div className="absolute left-5 bottom-[220px] z-10">
+        <RoadServiceLegend />
       </div>
 
       <Map

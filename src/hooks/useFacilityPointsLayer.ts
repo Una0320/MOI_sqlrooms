@@ -7,6 +7,7 @@ import { useMapStore } from '@/zustand/useMapStore';
 import { LAYER_IDS } from '@/constants/layers';
 import { FACILITY_STATION_COLOR, FACILITY_SHELTER_COLOR } from '@/constants/map';
 import { BUS_STOPS_URL, METRO_STATIONS_URL, SHELTERS_URL } from '@/constants/data';
+import { useResolvedFiles } from './useResolvedFiles';
 
 type StationPoint = { id: string; name: string; kind: 'bus' | 'metro'; X: number; Y: number };
 type ShelterPoint = { id: string; name: string; capacity: number; X: number; Y: number };
@@ -37,15 +38,17 @@ const buildLayer = <T extends { X: number; Y: number }>(
 };
 
 export const useFacilityPointsLayer = () => {
-  const { stationsVisible, sheltersVisible } = useMapStore(
+  const files = useResolvedFiles();
+  const { stationsChecked, sheltersChecked } = useMapStore(
     useShallow((s) => ({
-      // Stations 只在 mass_evacuation 有意義、Shelters 只在 shelter_in_place 有意義——
-      // 面板上已經把不相關的 checkbox 藏起來，這裡再跟 scenarioType 綁一次，
-      // 避免切情境後殘留的 visibleLayers 舊狀態讓不該出現的圖層跑出來。
-      stationsVisible: (s.visibleLayers[LAYER_IDS.STATIONS] ?? true) && s.scenarioType === 'mass_evacuation',
-      sheltersVisible: (s.visibleLayers[LAYER_IDS.SHELTERS] ?? true) && s.scenarioType === 'shelter_in_place',
+      stationsChecked: s.visibleLayers[LAYER_IDS.STATIONS] ?? true,
+      sheltersChecked: s.visibleLayers[LAYER_IDS.SHELTERS] ?? true,
     }))
   );
+  // 可不可見＝勾選 AND manifest 裡對應的 url 非 null（面板上沒資料的是 disabled，這裡再擋一次，
+  // 避免切組合後殘留的 visibleLayers 舊勾選讓沒有資料的圖層跑出來）。不再看 scenarioType。
+  const stationsVisible = stationsChecked && files.busStopsUrl !== null;
+  const sheltersVisible = sheltersChecked && files.sheltersUrl !== null;
 
   const { data: busStops } = useSql<{ id: string; name: string; X: number; Y: number }>({
     query: `SELECT stop_id AS id, stop_name AS name, X, Y FROM read_csv_auto('${BUS_STOPS_URL}')`,

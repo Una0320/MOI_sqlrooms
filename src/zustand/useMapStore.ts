@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { INITIAL_SELETED_MOBILITY_MODES_BITS } from '../constants/map';
 import { INITIAL_VISIBLE_LAYERS, type LayerId } from '../constants/layers';
-import type { ScenarioType } from '../constants/data';
+import { availableRatios, type Ratio, type ScenarioType } from '../constants/data';
 /**
 變數名稱,     代表意義,             範例 (秒),        視覺表現
 ViewRange,   數據的絕對邊界,        "[0, 86400]",    整個時間軸的總長度
@@ -22,6 +22,9 @@ interface MapState {
   selectedModes: number[];
   visibleLayers: Record<LayerId, boolean>;
   scenarioType: ScenarioType;
+  ratio: Ratio;
+  // 路網管制開關：切情境 / 切 ratio 時保持不變（見 setScenarioType）
+  networkControl: boolean;
 
   setTime: (t: number) => void;
   setTimeRange: (range: [number, number]) => void;
@@ -34,7 +37,15 @@ interface MapState {
   setViewTimeRange: (range: [number, number]) => void;
   toggleLayer: (id: LayerId) => void;
   setScenarioType: (type: ScenarioType) => void;
+  setRatio: (ratio: Ratio) => void;
+  setNetworkControl: (on: boolean) => void;
 }
+
+const RESET_PLAYBACK = {
+  time: 0,
+  timeRange: [0, DEFAULT_TIME_WINDOW_SEC] as [number, number],
+  isPlaying: false,
+};
 
 export const useMapStore = create<MapState>((set) => ({
   time: 0, // 初始時間
@@ -45,7 +56,9 @@ export const useMapStore = create<MapState>((set) => ({
   timeScale: 30, // 預設 30 倍速
   selectedModes: INITIAL_SELETED_MOBILITY_MODES_BITS,
   visibleLayers: INITIAL_VISIBLE_LAYERS,
-  scenarioType: 'mass_evacuation', // 預設對齊現有的 pt10 設定
+  scenarioType: 'mass_evacuation',
+  ratio: 10,
+  networkControl: false,
 
   setTime: (t) => set({ time: t }),
   setTimeRange: (range) => set({ timeRange: range }),
@@ -71,12 +84,16 @@ export const useMapStore = create<MapState>((set) => ({
   toggleLayer: (id) => set((state) => ({
     visibleLayers: { ...state.visibleLayers, [id]: !state.visibleLayers[id] },
   })),
-  // 兩種情境的時間軸長度差很多（pt* 70 小時、evac_ratio* 1.5 小時），切換時把播放狀態
-  // 重置回起點，不然可能卡在一個對新情境無效的時間點，畫面看起來像壞掉。
-  setScenarioType: (type) => set({
-    scenarioType: type,
-    time: 0,
-    timeRange: [0, DEFAULT_TIME_WINDOW_SEC],
-    isPlaying: false,
+  // 不同情境 / ratio 的時間軸長度差很多（pt* 約 70 小時、evac_ratio10 約 1.5 小時、evac_ratio40 約 11.8 小時），
+  // 切換時把播放狀態重置回起點，不然可能卡在一個對新資料無效的時間點，畫面看起來像壞掉。
+  // networkControl 刻意不在這裡動：切情境時開關狀態保持。
+  setScenarioType: (type) => set((state) => {
+    const control = state.networkControl ? 'network_control' : 'none';
+    // 目前的 ratio 在新情境沒資料時，退到該情境第一個有資料的 ratio（都沒有就維持原值，由 UI disabled）
+    const ratios = availableRatios(type, control);
+    const ratio = ratios.includes(state.ratio) ? state.ratio : (ratios[0] ?? state.ratio);
+    return { scenarioType: type, ratio, ...RESET_PLAYBACK };
   }),
+  setRatio: (ratio) => set({ ratio, ...RESET_PLAYBACK }),
+  setNetworkControl: (on) => set({ networkControl: on, ...RESET_PLAYBACK }),
 }));

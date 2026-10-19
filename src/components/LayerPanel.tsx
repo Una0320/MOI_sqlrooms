@@ -2,22 +2,20 @@ import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { useShallow } from '@sqlrooms/room-shell';
 
+import { NO_DATA_HINT } from '../constants/data';
 import { LAYER_CONFIG, type LayerId } from '../constants/layers';
+import { useResolvedFiles } from '../hooks/useResolvedFiles';
 import { useMapStore } from '../zustand/useMapStore';
 
 export const LayerPanel = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { visibleLayers, toggleLayer, scenarioType } = useMapStore(
+  const { visibleLayers, toggleLayer } = useMapStore(
     useShallow((s) => ({
       visibleLayers: s.visibleLayers,
       toggleLayer: s.toggleLayer,
-      scenarioType: s.scenarioType,
     })),
   );
-
-  // 情境限定的圖層（Stations/Stop Counts、Shelters/Shelter Capacity）只在對應情境下顯示，
-  // 不是留著關掉——切到不相關的情境時，這個選項直接從面板消失。
-  const visibleConfig = LAYER_CONFIG.filter((l) => !l.scenario || l.scenario === scenarioType);
+  const files = useResolvedFiles();
 
   return (
     <div className="bg-[#2B2B38]/90 border border-slate-700 p-4 rounded-lg text-white flex flex-col gap-3 font-mono shadow-xl backdrop-blur-sm">
@@ -32,14 +30,17 @@ export const LayerPanel = () => {
           {collapsed ? <Plus size={14} /> : <Minus size={14} />}
         </button>
       </div>
-      {!collapsed && visibleConfig.map((layer) => {
-        const isChecked = visibleLayers[layer.id] ?? false;
+      {!collapsed && LAYER_CONFIG.map((layer) => {
+        // 圖層可用與否只看 manifest 裡對應的 url 是不是 null：沒資料就 disabled 並提示（不隱藏）
+        const noData = files[layer.requires] === null;
+        const isChecked = !noData && (visibleLayers[layer.id] ?? false);
         const [r, g, b] = layer.color ?? [];
         return (
-          <label key={layer.id} className="flex items-center gap-3 cursor-pointer group">
+          <label key={layer.id} className={`flex items-center gap-3 group ${noData ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
               checked={isChecked}
+              disabled={noData}
               onChange={() => toggleLayer(layer.id as LayerId)}
               className="accent-cyan-500 w-4 h-4 cursor-pointer"
             />
@@ -53,6 +54,7 @@ export const LayerPanel = () => {
             >
               {layer.title}
             </span>
+            {noData && <span className="text-[11px] text-slate-500">{NO_DATA_HINT}</span>}
           </label>
         );
       })}

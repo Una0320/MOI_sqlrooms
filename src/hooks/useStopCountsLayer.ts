@@ -7,7 +7,8 @@ import Supercluster from 'supercluster';
 import { useMapStore } from '@/zustand/useMapStore';
 import { LAYER_IDS } from '@/constants/layers';
 import { AGENT_MODE_TRIP_COLORS, MAP_MAX_ZOOM } from '@/constants/map';
-import { SCENARIO_CONFIG, BUS_STOPS_URL, METRO_STATIONS_URL } from '@/constants/data';
+import { BUS_STOPS_URL, METRO_STATIONS_URL } from '@/constants/data';
+import { useResolvedFiles } from './useResolvedFiles';
 
 const SCATTER_LAYER_ID = 'stop-counts-layer';
 const TEXT_LAYER_ID = 'stop-counts-labels';
@@ -21,7 +22,7 @@ const WORLD_BBOX: [number, number, number, number] = [-180, -85, 180, 85];
 const CLUSTER_MAX_ZOOM = MAP_MAX_ZOOM - 1;
 const CLUSTER_RADIUS = 25;
 
-// 沒有 stopCountsUrl（情境用不到這張表，例如 shelter_in_place）就查一個保證 0 列的 SQL，圖層自然生不出東西
+// 沒有 stopCountsUrl（目前組合沒有這張表，例如就近避難）就查一個保證 0 列的 SQL，圖層自然生不出東西
 const buildQuery = (stopCountsUrl: string | null) =>
   stopCountsUrl
     ? `
@@ -70,15 +71,15 @@ const findCurrentIndex = (timestamps: number[], time: number): number => {
 };
 
 export const useStopCountsLayer = (currentZoom: number) => {
-  const { time, visible, scenarioType } = useMapStore(
+  const { time, visible } = useMapStore(
     useShallow((s) => ({
       time: s.time,
       visible: s.visibleLayers[LAYER_IDS.STOP_COUNTS] ?? false,
-      scenarioType: s.scenarioType,
     }))
   );
 
-  const query = buildQuery(SCENARIO_CONFIG[scenarioType].stopCountsUrl);
+  const { stopCountsUrl } = useResolvedFiles();
+  const query = buildQuery(stopCountsUrl);
   const { data } = useSql<Record<string, unknown>>({ query });
   const arrowTable = data?.arrowTable;
 

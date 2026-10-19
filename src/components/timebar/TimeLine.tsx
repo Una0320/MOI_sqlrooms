@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
-import { SCENARIO_CONFIG } from "@/constants/data";
+import { useResolvedFiles } from "@/hooks/useResolvedFiles";
 
 const BIN_SIZE = 60;            // SQL 粒度:60 秒一格(夠細,JS 端再做視覺重取樣)
 const HARD_MAX_SEC = 86400;     // 顯示上限:24:00:00(超過的資料不入 bar)
@@ -53,7 +53,6 @@ export const TimeLine = () => {
     setIsPlaying,
     setViewTimeRange,
     setTime,
-    scenarioType,
   } = useMapStore(useShallow((state) => ({
     viewTimeRange: state.viewTimeRange,
     displayTimeRange: state.displayTimeRange,
@@ -63,10 +62,11 @@ export const TimeLine = () => {
     setIsPlaying: state.setIsPlaying,
     setViewTimeRange: state.setViewTimeRange,
     setTime: state.setTime,
-    scenarioType: state.scenarioType,
   })));
 
-  const query = buildQuery(SCENARIO_CONFIG[scenarioType].dataUrl);
+  // Timebar 只在有軌跡資料（dataUrl 非 null）時才會被 MainView 掛載，這裡的 ?? '' 只是滿足型別
+  const { dataUrl } = useResolvedFiles();
+  const query = buildQuery(dataUrl ?? '');
 
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<string | null>(null); 

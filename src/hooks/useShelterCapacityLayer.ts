@@ -6,12 +6,12 @@ import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { useMapStore } from '@/zustand/useMapStore';
 import { LAYER_IDS } from '@/constants/layers';
 import { SHELTER_STATUS_COLORS } from '@/constants/map';
-import { SCENARIO_CONFIG } from '@/constants/data';
+import { useResolvedFiles } from './useResolvedFiles';
 
 const SCATTER_LAYER_ID = 'shelter-capacity-layer';
 const TEXT_LAYER_ID = 'shelter-capacity-labels';
 
-// 沒有 shelterCapacityUrl（情境用不到這張表，例如 mass_evacuation）就查一個保證 0 列的 SQL
+// 沒有 shelterCapacityUrl（目前組合沒有這張表，例如大規模撤離）就查一個保證 0 列的 SQL
 const buildQuery = (shelterCapacityUrl: string | null) =>
   shelterCapacityUrl
     ? `SELECT shelter_id, shelter_name, capacity, timestamps, current_count, load_ratio, status, X, Y FROM read_parquet('${shelterCapacityUrl}') ORDER BY shelter_id, timestamps`
@@ -57,15 +57,15 @@ const findCurrentIndex = (timestamps: number[], time: number): number => {
 };
 
 export const useShelterCapacityLayer = () => {
-  const { time, visible, scenarioType } = useMapStore(
+  const { time, visible } = useMapStore(
     useShallow((s) => ({
       time: s.time,
       visible: s.visibleLayers[LAYER_IDS.SHELTER_CAPACITY] ?? false,
-      scenarioType: s.scenarioType,
     }))
   );
 
-  const query = buildQuery(SCENARIO_CONFIG[scenarioType].shelterCapacityUrl);
+  const { shelterCapacityUrl } = useResolvedFiles();
+  const query = buildQuery(shelterCapacityUrl);
   const { data } = useSql<Record<string, unknown>>({ query });
   const arrowTable = data?.arrowTable;
 

@@ -1,21 +1,24 @@
 import { SpinnerPane } from '@sqlrooms/ui';
 import { useSql } from '@sqlrooms/duckdb';
-import { useShallow } from '@sqlrooms/room-shell';
 
-import { SCENARIO_CONFIG } from '../constants/data';
-import { useMapStore } from '../zustand/useMapStore';
+import { NO_DATA_HINT } from '../constants/data';
+import { useResolvedFiles } from '../hooks/useResolvedFiles';
 import { MapView } from './MapView';
 import { ModeSelector } from './ModeSelector';
 import { LayerPanel } from './LayerPanel';
 import { ScenarioSwitcher } from './ScenarioSwitcher';
+import { NetworkControlToggle } from './NetworkControlToggle';
 import { Timebar } from './timebar/Timebar';
 
 export const MainView: React.FC = () => {
-  const scenarioType = useMapStore(useShallow((s) => s.scenarioType));
-  const dataUrl = SCENARIO_CONFIG[scenarioType].dataUrl;
+  const { dataUrl } = useResolvedFiles();
 
+  // 沒有軌跡資料的組合（混合避難 / 優先疏散 / 管制版…）：查一個零列的 SQL 讓 hook 保持有效，
+  // 畫面上改顯示「此組合無資料」，不渲染地圖。
   const { data, isLoading, error } = useSql({
-    query: `SELECT paths, timestamps, modes FROM read_parquet('${dataUrl}')`,
+    query: dataUrl
+      ? `SELECT paths, timestamps, modes FROM read_parquet('${dataUrl}')`
+      : `SELECT CAST(NULL AS FLOAT[]) AS paths, CAST(NULL AS FLOAT[]) AS timestamps, CAST(NULL AS UTINYINT[]) AS modes WHERE false`,
   });
 
   const arrowTable = data?.arrowTable;
@@ -26,7 +29,13 @@ export const MainView: React.FC = () => {
         <>
           {/* 最底層：地圖 */}
           <div className="absolute inset-0 z-0">
-            <MapView arrowTable={arrowTable} />
+            {dataUrl ? (
+              <MapView arrowTable={arrowTable} />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center font-mono text-slate-400">
+                {NO_DATA_HINT}
+              </div>
+            )}
           </div>
 
           {/* 正上方置中：情境類型切換 */}
@@ -40,14 +49,17 @@ export const MainView: React.FC = () => {
               top-5(20px) + ~20px 緩衝，兩個面板之間才不會貼到邊界甚至疊到。改 Timebar 高度時要
               一起調這個數字，不然又會蓋回去。 */}
           <div className="absolute top-5 right-5 z-10 flex flex-col gap-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
+            <NetworkControlToggle />
             <ModeSelector />
             <LayerPanel />
           </div>
 
           {/* 正下方：時間軸 */}
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[90%] z-10 max-w-6xl">
-            <Timebar />
-          </div>
+          {dataUrl && (
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[90%] z-10 max-w-6xl">
+              <Timebar />
+            </div>
+          )}
         </>
       ) : (
         <SpinnerPane className="h-full w-full" />

@@ -9,7 +9,7 @@
 ### 1. 數據層 (Data Layer)
 * **本地 Node.js 後端**: 透過 HTTP 提供 `.parquet`/`.csv` 檔案，支援 **Range Requests**，允許 DuckDB 僅抓取所需的數據分片，減少網路傳輸負載。
 * **DuckDB WASM**: 在瀏覽器內運行的 SQL 引擎，直接讀取並解析 Parquet/CSV 格式，將結果轉化為 **Apache Arrow** 記憶體格式。
-* **情境對照表**: `src/constants/data.ts` 的 `SCENARIO_CONFIG` 集中管理「就地避難」／「大規模疏散」兩種情境各自對應的檔案路徑，畫面上的情境切換按鈕（`ScenarioSwitcher`）只是改變 Zustand 裡的一個字串，所有查詢都會自動重打。
+* **資料 manifest**: `src/constants/data.ts` 的 `resolveFiles({scenario, control, ratio})` 依「情境 × 路網管制 × 規模(10/20/40)」查 manifest，每個檔案欄位（軌跡、OD、候車人潮、避難所飽和率、Road Service、站點/避難所標記）各自可為 `null`。畫面上的情境分頁、ratio 按鈕與 Network Control 開關只是改變 Zustand 裡的狀態，所有查詢都會自動重打。
 
 ### 2. 狀態管理 (State Management)
 * **Zustand**: 取代傳統 Redux，負責輕量級的 UI 狀態（包含時間軸、播放控制、運具過濾、圖層開關、目前的情境類型）。
@@ -30,9 +30,10 @@
 | **高效能過濾 (Bitmask)** | WebGL Shader + 二進位運具過濾 | 在 GPU 內實現毫秒級的顯示模式切換 |
 | **動態時間軸 (Timebar)** | 雙層區間控制 (Display/Active Range) | 提供專業級的數據觀測解析度，支援區間平移 (Panning) |
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
-| **情境切換** | 一個 Zustand 狀態驅動所有查詢與圖層可見性 | 「就地避難」／「大規模疏散」各自的資料、疊圖互不干擾，切換即時重載 |
+| **情境 / ratio / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散／就近避難）+ ratio 10/20/40 + Network Control 開關，由 manifest 決定每個組合有哪些檔案 | 沒資料的分頁、ratio、圖層一律 disabled 並提示（「資料尚未提供」／「此組合無資料」），不隱藏；切換即時重載並重置時間軸 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
 | **設施點位 Tooltip** | Stations/Shelters/Stop-Counts 候車泡泡/Shelter-Capacity 飽和率圈都可點擊 | 不用另外查表就能核對站牌、避難所身分、候車人數與收容飽和度 |
+| **道路服務水準 (Road Service)** | 靜態尖峰 V/C：線色依 LOS A–F、線寬依 √log(1+V/C)，圖層開啟時顯示 legend | 一眼看出壅塞路段；放在所有圖層最底層當背景。資料來源 `05_moi_sim/road_service_<情境>.geojson`，目前只有 pt20 一份，沒有檔的情境該選項會 disabled 並標「此情境無資料」 |
 | **時間窗口 / 倍速** | Time window（15/30/60 分鐘，拖曳把手為 Custom）與 Speed（x30/x60/x120/x240）各收成單一按鈕，點開才展開 | 時間軸面板更精簡 |
 | **移動點位 Tooltip** | 「移動軌跡」圖層放大後（zoom > 11）切成逐點顯示，可看路徑編號/運具/即時時速，時速過低會標「塞車/等待中」或「緩慢移動」 | 不用隱藏停滯的點也能用滑鼠找出卡在哪一段的路徑 |
 
@@ -50,7 +51,7 @@ VITE_DUCKDB_CONNECTION_STRING=http://localhost:7780
 VITE_MAPTILER_API_KEY=
 ```
 
-實際會讀哪些檔案（trips / OD arc / 站點候車人潮 / 避難所容量），是由 `src/constants/data.ts` 的 `SCENARIO_CONFIG` 依畫面上選的情境決定，不用另外在 `.env` 裡指定檔名。
+實際會讀哪些檔案（trips / OD arc / 站點候車人潮 / 避難所容量 / Road Service），是由 `src/constants/data.ts` 的 manifest（`resolveFiles`）依畫面上選的情境、ratio 與路網管制決定，不用另外在 `.env` 裡指定檔名。
 
 `VITE_MAPTILER_API_KEY` 是選填的底圖來源設定：到 [MapTiler](https://cloud.maptiler.com/account/keys/) 免費申請一組 key 填進去，地圖底圖會換成 MapTiler 的 `dataviz-dark` 樣式（OSM 資料每週重建一次）；不填的話會 fallback 回原本的 CARTO `dark-matter-gl-style`（該底圖官方文件寫最慢一年才更新一次，新完工的路橋等建設可能好幾個月都看不到）。
 
@@ -109,6 +110,6 @@ yarn preview  # 本機預覽 build 出來的 dist/
 * **Timebar 依 mode 過濾直方圖**: 目前 `TimeLine.tsx` 的直方圖 query 只用 `timestamps` 統計每個 bin 的 agent 數量，未讀取 `modes` 欄位，也未接上 `selectedModes` state；勾選/取消 ModeSelector 的運具不會影響時間軸下方的長條圖分布。
   * 方案 A（SQL 端）：query 依 `selectedModes` 動態組 `WHERE modes ...`，直方圖只統計符合的 agent。
   * 方案 B（JS 端）：一次撈出 timestamp 對應的 mode，前端依 `selectedModes` 重新計算直方圖，避免每次切換都重打 DuckDB。
-* **子情境選單**: 目前「就地避難」／「大規模疏散」各自固定用一個子情境代表（`evac_ratio10`／`pt10`）；`sim_data` 裡其實還有 `20`/`40` 兩級規模的資料，之後如果要讓使用者選，`SCENARIO_CONFIG` 要從單一物件擴充成清單。
-* **道路服務水準圖層**: `sim_data/.../05_moi_sim/road_service_<情境>.geojson`（V/C 比、LOS 分級）還沒接上，需要新的 PathLayer（README 內部原本預留了 `VCPathLayer` 這個名字），目前只有 `pt20` 情境有這份資料。
+* **混合避難／優先疏散／路網管制資料**: 這三者目前沒有任何檔案（manifest 全 `null`，分頁與 Network Control 開關 disabled）。交付後在 `data.ts` 的 manifest 加一筆即可，不用改 UI。
+* **道路服務水準圖層補資料**: 圖層已接上（`useRoadServiceLayer`），但交付批次只有 `road_service_pt20.geojson`，所以只有「大規模撤離」ratio 20 可用，其他 ratio 與情境的勾選框 disabled。拿到其他檔案後補進 manifest 的 `roadServiceUrl` 即可。
 * **`01_trajectory` 逐運具拆檔**: 目前 trips/OD 都是走 `05_moi_sim` 的相容格式（單檔含全部運具），`01_trajectory`（每運具獨立、欄位更豐富，例如 `dist_road_m`/`is_teleport_walk`）還沒用上。
