@@ -271,9 +271,12 @@ export const TimeLine = () => {
             ))}
           </div>
         </div>
+        {/* 窗口本體（可整個左右拖曳平移）。白色把手停用後，窗口位置全靠這個元素顯示：
+            左右各一條 2px 白邊（相當於原本白色把手的位置，但只是視覺、不能拉寬度，游標是 grab）+ 淡白色填色；
+            minWidth 12px：15 分鐘的窗口只佔時間軸約 1%（約 11px），不設最小寬度的話幾乎看不到、也很難抓。 */}
         <div 
-          className="absolute inset-y-0 bg-gray-600/20 border-x border-cyan-500/50 cursor-grab active:cursor-grabbing hover:bg-gray-600/30 transition-colors z-10 backdrop-blur-[0.5px]"
-          style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+          className="absolute inset-y-0 box-border border-x-2 border-white bg-white/20 cursor-grab active:cursor-grabbing hover:bg-white/30 transition-colors z-10"
+          style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: 12 }}
           onPointerDown={(e) => handlePointerDown(e, 'range')}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
