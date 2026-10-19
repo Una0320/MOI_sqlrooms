@@ -26,7 +26,7 @@ export function CollapsibleChoice<T extends string | number>({
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
-        className="h-7 px-3 bg-[#1e1e24] border border-slate-700 rounded-lg text-xs font-mono text-slate-300 hover:text-white hover:bg-slate-700"
+        className="h-7 shrink-0 px-3 bg-[#1e1e24] border border-slate-700 rounded-lg text-xs font-mono text-slate-300 hover:text-white hover:bg-slate-700"
       >
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mr-2">
           {title}
@@ -37,7 +37,7 @@ export function CollapsibleChoice<T extends string | number>({
   }
 
   return (
-    <div className="flex items-center bg-[#1e1e24] border border-slate-700 rounded-lg p-1 gap-1">
+    <div className="flex shrink-0 items-center bg-[#1e1e24] border border-slate-700 rounded-lg p-1 gap-1">
       <span className="text-[11px] font-bold text-slate-500 px-2 uppercase tracking-widest">
         {title}
       </span>

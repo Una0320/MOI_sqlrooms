@@ -9,6 +9,7 @@ import { formatDurationTo24Hour } from "./utils";
 import { TimeLine } from "./TimeLine";
 import { AdjustTimeSpeedRatio } from "./AdjustTimeSpeedRatio";
 import { AdjustTimeWindow } from "./AdjustTimeWindow";
+import { RatioSelector } from "./RatioSelector";
 import { useShallow } from "@sqlrooms/room-shell";
 
 export const Timebar = () => {
@@ -65,7 +66,7 @@ export const Timebar = () => {
           }
         </Button>
         
-        <div className="flex flex-col">
+        <div className="flex shrink-0 flex-col whitespace-nowrap">
           <span className="text-[10px] leading-none font-bold text-slate-400 uppercase tracking-wider">
             Timeline
           </span>
@@ -75,7 +76,8 @@ export const Timebar = () => {
         </div>
 
         {/* 靠右對齊倍速器 */}
-        <div className="ml-auto flex items-center gap-2 text-sm font-mono font-medium">
+        <div className="ml-auto flex items-center gap-2 text-sm font-mono font-medium whitespace-nowrap">
+          <RatioSelector />
           <AdjustTimeWindow />
           <AdjustTimeSpeedRatio />
         </div>

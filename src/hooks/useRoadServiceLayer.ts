@@ -26,7 +26,7 @@ type RoadFeature = {
   properties: Record<string, number | string>;
 };
 
-type RoadServiceData = { links: RoadLink[]; sourceScenario: string | null };
+type RoadServiceData = { links: RoadLink[] };
 
 // GeoJSON 有 ~10MB，不走 DuckDB（不需要 SQL，也避免為了讀 geojson 載 spatial extension）。
 // 用模組層級 Map 以 URL 快取：切情境、關掉再開圖層都不會重抓，且只在圖層第一次被打開時才下載。
@@ -52,7 +52,7 @@ const loadRoadService = (url: string): Promise<RoadServiceData> => {
         });
         // 由低到高排序：壅塞（D/E/F）的路段最後畫，不會被大量 A 級細線蓋住
         links.sort((a, b) => a.vc - b.vc);
-        return { links, sourceScenario: geo._provenance?.scenario_code ?? null };
+        return { links };
       });
     p.catch(() => cache.delete(url)); // 失敗不留快取，下次打開圖層可重試
     cache.set(url, p);
@@ -101,19 +101,3 @@ export const useRoadServiceLayer = (currentZoom: number) => {
   }, [data, widthScale]);
 };
 
-// legend 要顯示資料來源（這份 geojson 實際是哪個子情境的模擬）
-export const useRoadServiceSource = () => {
-  const { roadServiceUrl: url } = useResolvedFiles();
-  const [source, setSource] = useState<string | null>(null);
-  useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
-    loadRoadService(url)
-      .then((d) => !cancelled && setSource(d.sourceScenario))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-  return url ? source : null;
-};

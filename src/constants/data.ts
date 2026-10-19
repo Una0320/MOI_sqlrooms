@@ -35,6 +35,17 @@ export const SCENARIO_LABELS: Record<ScenarioType, string> = {
 };
 export const RATIOS: readonly Ratio[] = [10, 20, 40];
 
+// Timeline 上 ratio 選擇器左邊的標籤文字，每個情境各自指定（不寫死在元件裡）。
+// 大規模撤離的資料檔是 pt10/20/40 → 'pt'；就近避難是 evac_ratio10/20/40。
+// 這個標籤只是檔名前綴，ratio（10/20/40）本身的意義還在等資料端確認，所以 UI 不加任何說明文字。
+// null = 這個情境沒有標籤（選擇器只顯示 10/20/40 三顆按鈕）。
+export const RATIO_LABELS: Record<ScenarioType, string | null> = {
+  mass_evacuation: 'pt',
+  mixed_shelter: null,
+  priority_evac: null,
+  nearest_shelter: 'evac_ratio',
+};
+
 export type FileKey = { scenario: ScenarioType; control: Control; ratio: Ratio };
 
 // ───────────────────────── manifest ─────────────────────────

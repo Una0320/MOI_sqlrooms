@@ -30,13 +30,13 @@
 | **高效能過濾 (Bitmask)** | WebGL Shader + 二進位運具過濾 | 在 GPU 內實現毫秒級的顯示模式切換 |
 | **動態時間軸 (Timebar)** | 雙層區間控制 (Display/Active Range) | 提供專業級的數據觀測解析度，支援區間平移 (Panning) |
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
-| **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關，由 manifest 決定每個組合有哪些檔案（ratio 預設 20，目前沒有 UI；就近避難 evac_ratio 的 manifest 與資料路徑保留，只是不在分頁上） | 沒資料的分頁、圖層一律 disabled 並提示（「資料尚未提供」／「此組合無資料」），不隱藏；切換即時重載並重置時間軸 |
+| **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關，由 manifest 決定每個組合有哪些檔案（ratio 預設 20；就近避難 evac_ratio 的 manifest 與資料路徑保留，只是不在分頁上） | 沒資料的分頁、圖層一律 disabled 並提示（「資料尚未提供」／「此組合無資料」），不隱藏；切換即時重載並重置時間軸 |
 | **完成率 (Evac Rate)** | 左上角 `Evac Rate`（標籤固定這個寫法），累計值、二分搜尋查表；evac_ratio 用人數口徑（car=4），pt 以移動段(leg)計，hover 說明資料缺 person_id、非嚴格的人員撤離率 | 看撤離進度隨時間的變化 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
 | **面板配置** | 右上 Network Control 滑動開關 + Mobility Modes + Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evac Rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 103px 高，與圖例底邊對齊（圖例顯示時 Timeline 左緣右移到圖例右側）；所有面板統一 1px 半透明淺色邊線 + backdrop-blur | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
 | **圖層 Tooltip** | Stop-Counts 候車泡泡／Shelter-Capacity 飽和率圈都可 hover | 不用另外查表就能核對站點候車人數與避難所收容飽和度 |
-| **道路服務水準 (Road Service)** | 靜態尖峰 V/C：線色依 LOS A–F、線寬依 √log(1+V/C)，圖層開啟時顯示 legend（LOS 色碼 A #44C23A／B #1FB33B／C #DFD34E／D #DF9651／E #D15528／F #C22E00，圖例與地圖共用同一組常數） | 一眼看出壅塞路段；放在所有圖層最底層當背景。資料來源 `05_moi_sim/road_service_<情境>.geojson`，目前只有 pt20 一份，預設的大規模撤離（ratio 20）可勾，沒有檔的組合該選項會 disabled 並標「此組合無資料」 |
-| **時間窗口 / 倍速** | Time window（15/30/60 分鐘，拖曳把手為 Custom）與 Speed（x30/x60/x120/x240）各收成單一按鈕，點開才展開 | 時間軸面板更精簡 |
+| **道路服務水準 (Road Service)** | 靜態尖峰 V/C：線色依 LOS A–F、線寬依 √log(1+V/C)，圖層開啟時顯示 legend（標題 ROAD SERVICE (LOS)＋「道路服務水準」；A–F 連成一條連續色條，右邊是字母與中文說明，不顯示任何數值，寬度固定 232px。LOS 色碼 A #44C23A／B #1FB33B／C #DFD34E／D #DF9651／E #D15528／F #C22E00，圖例與地圖共用同一組常數） | 一眼看出壅塞路段；放在所有圖層最底層當背景。資料來源 `05_moi_sim/road_service_<情境>.geojson`，目前只有 pt20 一份，預設的大規模撤離（ratio 20）可勾，沒有檔的組合該選項會 disabled 並標「此組合無資料」 |
+| **時間窗口 / 倍速 / pt 選擇器** | Timeline 右側由左到右：pt 選擇器（左邊標籤 + 10／20／40 分段按鈕攤開，標籤文字來自 manifest 的 `RATIO_LABELS`，沒資料的選項 disabled 並提示「此組合無資料」，切換時重置時間軸，預設 20）、Time window（15/30/60 分鐘，拖曳把手為 Custom）、Speed（x30/x60/x120/x240）；時間窗口的白色把手視覺 4px、感應區 12px，hover/拖曳時加亮 | 時間軸面板更精簡；ratio 的意義待資料端確認，所以不加說明文字 |
 | **移動點位 Tooltip** | 「移動軌跡」圖層放大後（zoom > 11）切成逐點顯示，可看路徑編號/運具/即時時速，時速過低會標「塞車/等待中」或「緩慢移動」 | 不用隱藏停滯的點也能用滑鼠找出卡在哪一段的路徑 |
 
 ---

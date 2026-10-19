@@ -33,13 +33,14 @@ export const LOS_COLORS = Object.fromEntries(
   LOS_LEVELS.map((los) => [los, [...hexToRgb(LOS_HEX[los]), LOS_ALPHA]]),
 ) as Record<LOSLevel, [number, number, number, number]>;
 
-export const LOS_LABELS: Record<LOSLevel, string> = {
-  A: 'V/C ≤ 0.50',
-  B: '0.50 – 0.65',
-  C: '0.65 – 0.75',
-  D: '0.75 – 1.00',
-  E: '1.00 – 1.20',
-  F: '> 1.20',
+// 圖例上每個等級的中文說明（圖例不顯示任何門檻數值）
+export const LOS_DESCRIPTIONS: Record<LOSLevel, string> = {
+  A: '自由車流',
+  B: '穩定車流（少許延滯）',
+  C: '穩定車流（延滯可接受）',
+  D: '接近不穩定（延滯可容忍）',
+  E: '不穩定車流（延滯不可容忍）',
+  F: '強迫車流（交通阻塞）',
 };
 
 // 線寬映射：t = sqrt(log_V/C / LOG_VC_REF) 夾在 0–1，再線性映射到 [MIN, MAX] px。
@@ -55,9 +56,6 @@ export const roadWidthPx = (logVc: number): number => {
   return ROAD_WIDTH_MIN_PX + t * (ROAD_WIDTH_MAX_PX - ROAD_WIDTH_MIN_PX);
 };
 
-// legend 的粗細對照：[V/C, 對應 log_V/C 的線寬]
-export const ROAD_WIDTH_SAMPLES: readonly number[] = [0.05, 0.5, 1.0, 1.2];
-export const logVcOf = (vc: number): number => Math.log10(1 + vc);
 
 // 縮放：地圖 z10（最小）線細一點避免糊成一片，z15（最大）放寬到 1.6 倍；線性內插
 export const roadWidthScaleForZoom = (zoom: number, minZoom: number, maxZoom: number): number => {

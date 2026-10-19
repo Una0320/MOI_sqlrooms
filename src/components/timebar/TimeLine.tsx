@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
@@ -70,6 +70,8 @@ export const TimeLine = () => {
 
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<string | null>(null); 
+  // 目前被抓住的把手（給把手「拖曳中加亮」用；isDragging 是 ref，改它不會重新渲染）
+  const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const lastValueRef = useRef(timeRange[0]);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -163,6 +165,7 @@ export const TimeLine = () => {
     e.preventDefault();
     e.stopPropagation();
     isDragging.current = type;
+    setActiveHandle(type);
     lastValueRef.current = getValueFromClientX(e.clientX);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -237,6 +240,7 @@ export const TimeLine = () => {
   const handlePointerUp = (e: React.PointerEvent) => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     isDragging.current = null;
+    setActiveHandle(null);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
@@ -281,20 +285,31 @@ export const TimeLine = () => {
         onPointerMove={handleDisplayTimeRangeMove}
         onPointerUp={handlePointerUp}
       />
-      <div
-        className="absolute block h-10 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
-        style={{ left: `${leftPct}%`, transform: 'translateX(-50%)' }}
-        onPointerDown={(e) => handlePointerDown(e, 'start')}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      />
-      <div
-        className="absolute block h-10 w-2 border border-slate-900 bg-white shadow-sm hover:scale-110 cursor-col-resize z-20 transition-transform"
-        style={{ left: `${leftPct + widthPct}%`, transform: 'translateX(-50%)' }}
-        onPointerDown={(e) => handlePointerDown(e, 'end')}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      />
+      {/* 白色把手（時間窗口的起點 / 終點）：視覺寬度 4px，原本是 8px（含 1px 深色邊）；
+          感應區是外層 12px 寬的透明容器（touch-none、cursor-col-resize），視覺變細不會更難抓。
+          內層的細條 pointer-events-none，所以按下 / 移動的事件目標一律是外層容器。
+          hover 或拖曳中：從 slate-200 變純白 + 外發光，讓使用者知道抓到了。 */}
+      {([['start', leftPct], ['end', leftPct + widthPct]] as const).map(([type, pct]) => {
+        const active = activeHandle === type;
+        return (
+          <div
+            key={type}
+            className="group absolute z-20 flex h-10 w-3 cursor-col-resize items-stretch justify-center"
+            style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
+            onPointerDown={(e) => handlePointerDown(e, type)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <span
+              className={`pointer-events-none block w-1 rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.9)] transition-[background-color,box-shadow] ${
+                active
+                  ? 'bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_0_8px_2px_rgba(255,255,255,0.7)]'
+                  : 'bg-slate-200 group-hover:bg-white group-hover:shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_0_6px_1px_rgba(255,255,255,0.6)]'
+              }`}
+            />
+          </div>
+        );
+      })}
     </div>
   )
 }
