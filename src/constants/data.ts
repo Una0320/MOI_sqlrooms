@@ -51,6 +51,12 @@ export type FileSet = {
   busStopsUrl: string | null; //        02_points 站點標記（Stations 圖層；公車）
   metroStationsUrl: string | null; //   02_points 站點標記（Stations 圖層；捷運）
   sheltersUrl: string | null; //        02_points 避難所標記（Shelters 圖層）
+  // 左上角完成率的算法（見 hooks/useEvacuationRate.ts）：
+  //   'people_weighted' — 「Evacuation rate」：一列 = 一個 agent，car agent 算 4 人、其餘 1 人（evac_ratio）
+  //   'leg_count'       — 「Leg completion」：pt* 的列是 leg、05 又沒有 person_id，只能以移動段計
+  //                       （不是人員撤離率）
+  //   null — 沒有軌跡資料的組合，不顯示
+  evacuationRate: 'people_weighted' | 'leg_count' | null;
 };
 
 const EMPTY: FileSet = {
@@ -62,6 +68,7 @@ const EMPTY: FileSet = {
   busStopsUrl: null,
   metroStationsUrl: null,
   sheltersUrl: null,
+  evacuationRate: null,
 };
 
 const keyOf = (k: FileKey) => `${k.scenario}|${k.control}|${k.ratio}`;
@@ -80,6 +87,7 @@ for (const r of RATIOS) {
     roadServiceUrl: r === 20 ? urlFor('05_moi_sim/road_service_pt20.geojson') : null,
     busStopsUrl: BUS_STOPS_URL,
     metroStationsUrl: METRO_STATIONS_URL,
+    evacuationRate: 'leg_count',
   };
   // 就近避難（evac_ratio*）：有避難所飽和率；零大眾運輸所以沒有候車人潮（README §5）。
   MANIFEST[keyOf({ scenario: 'nearest_shelter', control: 'none', ratio: r })] = {
@@ -88,6 +96,7 @@ for (const r of RATIOS) {
     odDataUrl: urlFor(`05_moi_sim/abm_od_arc_outcome_10000_evac_ratio${r}.parquet`),
     shelterCapacityUrl: urlFor(`04_shelter_capacity/shelter_capacity_evac_ratio${r}.parquet`),
     sheltersUrl: SHELTERS_URL,
+    evacuationRate: 'people_weighted',
   };
 }
 

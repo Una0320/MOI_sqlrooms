@@ -31,6 +31,7 @@
 | **動態時間軸 (Timebar)** | 雙層區間控制 (Display/Active Range) | 提供專業級的數據觀測解析度，支援區間平移 (Panning) |
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
 | **情境 / ratio / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散／就近避難）+ ratio 10/20/40 + Network Control 開關，由 manifest 決定每個組合有哪些檔案 | 沒資料的分頁、ratio、圖層一律 disabled 並提示（「資料尚未提供」／「此組合無資料」），不隱藏；切換即時重載並重置時間軸 |
+| **完成率** | 左上角 `Evacuation rate`（就近避難，人數口徑 car=4）／`Leg completion`（大規模撤離，以移動段計），累計值，二分搜尋查表 | 看撤離進度隨時間的變化；pt 資料缺 person_id，所以只能給 leg 完成率，hover 有說明 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
 | **設施點位 Tooltip** | Stations/Shelters/Stop-Counts 候車泡泡/Shelter-Capacity 飽和率圈都可點擊 | 不用另外查表就能核對站牌、避難所身分、候車人數與收容飽和度 |
 | **道路服務水準 (Road Service)** | 靜態尖峰 V/C：線色依 LOS A–F、線寬依 √log(1+V/C)，圖層開啟時顯示 legend | 一眼看出壅塞路段；放在所有圖層最底層當背景。資料來源 `05_moi_sim/road_service_<情境>.geojson`，目前只有 pt20 一份，沒有檔的情境該選項會 disabled 並標「此情境無資料」 |

@@ -18,6 +18,7 @@ import { useFacilityPointsLayer } from '../hooks/useFacilityPointsLayer';
 import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
 import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
+import { evacuationRateAt, useEvacuationCurve } from '../hooks/useEvacuationRate';
 import { RoadServiceLegend } from './RoadServiceLegend';
 
 
@@ -129,6 +130,8 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   const stopCountsLayers = useStopCountsLayer(currentZoom);
   const shelterCapacityLayers = useShelterCapacityLayer();
   const roadServiceLayer = useRoadServiceLayer(currentZoom);
+  const evacuationCurve = useEvacuationCurve();
+  const evacuationRate = evacuationRateAt(evacuationCurve, time);
   
   // 🌟 修復時間凍結：完美的 requestAnimationFrame 迴圈
   useEffect(() => {
@@ -227,6 +230,9 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
       {/* 為了方便除錯，暫時保留左上角的時鐘/zoom，之後可以拿掉 */}
       <div className="absolute top-5 left-5 z-10 bg-black/80 text-white p-3 rounded font-mono">
         <div>Time: {formatDurationTo24Hour(time * 1000)}</div>
+        <div title={evacuationCurve.note} className="cursor-help">
+          {evacuationCurve.label}: {evacuationRate !== null ? `${evacuationRate.toFixed(1)}%` : evacuationCurve.kind === 'loading' ? '…' : '—'}
+        </div>
         <div>Zoom: {currentZoom.toFixed(2)}</div>
       </div>
 
