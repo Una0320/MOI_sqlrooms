@@ -178,7 +178,8 @@ export const useStopCountsLayer = (currentZoom: number) => {
           hasData = true;
         }
       }
-      if (!hasData) continue;
+      // 人走光的那一格值是 0（README：前端照「≤ 現在時刻的最後一筆」延用），0 人不畫泡泡
+      if (!hasData || waiting <= 0) continue;
 
       snapshots.push({
         x: group.x,

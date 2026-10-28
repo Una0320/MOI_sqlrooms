@@ -6,18 +6,18 @@ import { PANEL_FRAME } from '../constants/layout';
 import { useMapStore } from '../zustand/useMapStore';
 
 // 路網管制（Network Control）開關：開啟時所有情境改用管制版模擬結果。
-// 狀態存在 store、切情境 / 切 ratio 都不會被重置。目前交付批次沒有任何管制版檔案，
-// 所以「目前組合沒有管制版資料」時開關 disabled（整列明顯變淡）；已經開著的話保持可點，才能關回去。
+// 狀態存在 store、切情境 / 切抽樣量都不會被重置。
+// 「目前組合沒有管制版資料」時開關 disabled（整列明顯變淡）；已經開著的話保持可點，才能關回去。
 export const NetworkControlToggle = () => {
-  const { networkControl, setNetworkControl, scenarioType, ratio } = useMapStore(
+  const { networkControl, setNetworkControl, scenarioType, sampleSize } = useMapStore(
     useShallow((s) => ({
       networkControl: s.networkControl,
       setNetworkControl: s.setNetworkControl,
       scenarioType: s.scenarioType,
-      ratio: s.ratio,
+      sampleSize: s.sampleSize,
     })),
   );
-  const hasControlData = isAvailable({ scenario: scenarioType, control: 'network_control', ratio });
+  const hasControlData = isAvailable({ scenario: scenarioType, control: 'network_control', sampleSize });
   const disabled = !networkControl && !hasControlData;
 
   return (

@@ -6,6 +6,7 @@ import type { FileSet } from './data';
 export const LAYER_IDS = {
   TRIPS: 'trips',
   ROAD_SERVICE: 'road-service',
+  ROAD_CONTROL: 'road-control',
   HEATMAP: 'heatmap',
   OD_ARC: 'od-arc',
   STOP_COUNTS: 'stop-counts',
@@ -26,10 +27,11 @@ export type LayerConfig = {
 // 面板顯示順序（與繪製順序無關，繪製順序見 MapView.tsx）。
 export const LAYER_CONFIG: readonly LayerConfig[] = [
   { id: LAYER_IDS.TRIPS, title: 'Trips · 移動軌跡', defaultVisible: true, requires: 'dataUrl' },
-  { id: LAYER_IDS.HEATMAP, title: 'Heatmap · 路徑流量', defaultVisible: false, requires: 'dataUrl' },
+  { id: LAYER_IDS.HEATMAP, title: 'Heatmap · 路徑流量', defaultVisible: false, requires: 'heatmapUrl' },
   { id: LAYER_IDS.OD_ARC, title: 'OD Arc · 起訖弧線', defaultVisible: false, requires: 'odDataUrl' },
   { id: LAYER_IDS.SHELTER_CAPACITY, title: 'Shelter Capacity · 避難所飽和率', defaultVisible: false, requires: 'shelterCapacityUrl' },
   { id: LAYER_IDS.ROAD_SERVICE, title: 'Road Service · 道路服務水準', defaultVisible: false, requires: 'roadServiceUrl' },
+  { id: LAYER_IDS.ROAD_CONTROL, title: 'Road Control · 道路管制', defaultVisible: true, requires: 'roadControlUrl' },
   { id: LAYER_IDS.STOP_COUNTS, title: 'Stop Counts · 站點候車人潮', defaultVisible: false, requires: 'stopCountsUrl' },
 ];
 

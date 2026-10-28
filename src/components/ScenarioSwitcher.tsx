@@ -10,7 +10,7 @@ import {
 } from '@/constants/data';
 
 // 情境分頁：大規模撤離／混合避難／優先疏散。沒有任何資料的分頁 disabled，提示「資料尚未提供」。
-// ratio（10/20/40）目前沒有 UI：store 的 ratio 與 resolveFiles 的 ratio 參數都保留，之後要放回按鈕只要接 setRatio。
+// 抽樣量選擇器在 Timeline 上（timebar/SampleSizeSelector.tsx），不在這裡。
 export const ScenarioSwitcher = () => {
   const { scenarioType, setScenarioType, networkControl } = useMapStore(
     useShallow((s) => ({

@@ -38,7 +38,7 @@ export function CollapsibleChoice<T extends string | number>({
   }
 
   return (
-    <div className="flex shrink-0 items-center bg-[#1e1e24] border border-slate-700 rounded-lg p-1 gap-1">
+    <div className="flex shrink-0 items-center h-7 bg-[#1e1e24] border border-slate-700 rounded-lg px-1 gap-1">
       <span className="text-[11px] font-bold text-slate-500 px-2 uppercase tracking-widest">
         {title}
       </span>

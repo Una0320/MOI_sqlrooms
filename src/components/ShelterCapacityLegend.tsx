@@ -23,7 +23,7 @@ export const ShelterCapacityLegend = () => {
           return (
             <div key={status} className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: `rgba(${r}, ${g}, ${b}, ${a / 255})` }} />
-              <span className="w-16">{label}</span>
+              <span className="w-20">{label}</span>
               <span className="text-slate-400">{range}</span>
             </div>
           );

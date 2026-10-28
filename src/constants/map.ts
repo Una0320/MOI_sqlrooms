@@ -64,25 +64,26 @@ export const MODE_BIT_LABELS: Record<number, string> = {
   [MOBILITY_MODE_BITS[MOBILITY_MODES.RAIL]]: '捷運',
 }
 
-// 避難所飽和度分級顏色。⚠ 04_shelter_capacity/ 實際 status 欄位值是
-// empty/normal/crowded/near_full/over_capacity（不是文件寫的 empty/low/medium/high/over），
-// 之前 key 對不上，除了 empty 以外全部 fallback 成灰白色——這才是「圈都是白色半透明」的真正原因。
-// 高飽和度的藍→綠→黃→橘→紅色相漸層，alpha 跟著嚴重度一起遞增，色相＋透明度雙重強化區隔。
+// 避難所分級顏色（交付批次 20261023 README §4 圖例）：status 欄位值是 unused / under_capacity / over_capacity / full。
+// 色碼取自 README：#9AA0A6 / #A6D96A / #FDAE61 / #D7191C，alpha 跟著嚴重度遞增。
 export const SHELTER_STATUS_COLORS: Record<string, [number, number, number, number]> = {
-  empty: [37, 99, 235, 150],
-  normal: [16, 185, 129, 170],
-  crowded: [250, 204, 21, 195],
-  near_full: [249, 115, 22, 215],
-  over_capacity: [220, 38, 38, 235],
+  unused: [154, 160, 166, 160],
+  under_capacity: [166, 217, 106, 190],
+  over_capacity: [253, 174, 97, 215],
+  full: [215, 25, 28, 235],
 }
 
-// Shelter Capacity 圖例的列：順序、中文標籤與 load_ratio 範圍（實測 04_shelter_capacity 的 status 切點：
-// empty = 0、normal ≤ 0.7、crowded ≤ 0.9、near_full ≤ 1.0、over_capacity > 1.0）。顏色一律取自上面的
-// SHELTER_STATUS_COLORS，圖例與地圖共用同一份。
+export const SHELTER_STATUS_LABELS: Record<string, string> = {
+  unused: '無人',
+  under_capacity: '未超過容量',
+  over_capacity: '超收',
+  full: '額滿',
+}
+
+// Shelter Capacity 圖例的列：順序、中文標籤與條件。顏色一律取自上面的 SHELTER_STATUS_COLORS，圖例與地圖共用同一份。
 export const SHELTER_STATUS_LEGEND: { status: keyof typeof SHELTER_STATUS_COLORS; label: string; range: string }[] = [
-  { status: 'empty', label: '空', range: '0%' },
-  { status: 'normal', label: '正常', range: '≤ 70%' },
-  { status: 'crowded', label: '擁擠', range: '70 – 90%' },
-  { status: 'near_full', label: '接近滿載', range: '90 – 100%' },
-  { status: 'over_capacity', label: '超載', range: '> 100%' },
+  { status: 'unused', label: '無人', range: '0 人' },
+  { status: 'under_capacity', label: '未超過容量', range: '< 100%' },
+  { status: 'over_capacity', label: '超收', range: '≥ 100%、未達上限' },
+  { status: 'full', label: '額滿', range: '達 1.5 倍上限' },
 ];

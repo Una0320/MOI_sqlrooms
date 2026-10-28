@@ -6,7 +6,7 @@ import type * as arrow from 'apache-arrow';
 
 import { BASEMAP_STYLE } from '../constants/basemap';
 import { PANEL_FRAME } from '../constants/layout';
-import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM, MODE_BIT_LABELS } from '../constants/map';
+import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM, MODE_BIT_LABELS, SHELTER_STATUS_LABELS } from '../constants/map';
 import { LAYER_IDS } from '../constants/layers';
 import { ArrowTripsLayer } from './custom_layer/arrowTripsLayer/ArrowTripsLayer';
 import { ArrowLoader, ArrowWorkerLoader } from '@loaders.gl/arrow';
@@ -19,6 +19,7 @@ import { usePointsLayer, ZOOM_THRESHOLD } from '../hooks/usePointsLayer';
 import { useStopCountsLayer } from '../hooks/useStopCountsLayer';
 import { useShelterCapacityLayer } from '../hooks/useShelterCapacityLayer';
 import { useRoadServiceLayer } from '../hooks/useRoadServiceLayer';
+import { useRoadControlLayer } from '../hooks/useRoadControlLayer';
 import { evacuationRateAt, useEvacuationCurve } from '../hooks/useEvacuationRate';
 
 
@@ -63,7 +64,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     if (info.layer?.id === 'shelter-capacity-layer') {
       const pct = Math.round((obj.loadRatio ?? 0) * 100);
       return {
-        text: `避難所\n編號: ${obj.id}\n${obj.name ?? ''}\n收容: ${obj.currentCount} / ${obj.capacity ?? '—'} 人\n壅擠度: ${pct}%（${obj.status}）`,
+        text: `避難所\n編號: ${obj.id}\n${obj.name ?? ''}\n收容: ${obj.currentCount} / ${obj.capacity ?? '—'} 人\n壅擠度: ${pct}%（${SHELTER_STATUS_LABELS[obj.status] ?? obj.status}）`,
       };
     }
     return null;
@@ -77,8 +78,8 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return () => clearTimeout(id);
   }, [timeRange, isPlaying]);
 
-  // 同份 arrowTable 給 heatmap / points;未來若資料來源分流,改在 hook 內 useSql。
-  const heatmapLayers = useHeatmapLayer(arrowTable, debouncedTimeRange);
+  // heatmap 讀自己的 08_heatmap 查詢;points 與 trips 共用同一份軌跡 arrowTable。
+  const heatmapLayers = useHeatmapLayer(debouncedTimeRange);
   const odArcLayer = useODArcLayer();
   const { layers: pointsLayers, meta: pointsMeta } = usePointsLayer(arrowTable, currentZoom);
   const pointsMetaRef = useRef(pointsMeta);
@@ -106,6 +107,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   const stopCountsLayers = useStopCountsLayer(currentZoom);
   const shelterCapacityLayers = useShelterCapacityLayer();
   const roadServiceLayer = useRoadServiceLayer(currentZoom);
+  const roadControlLayer = useRoadControlLayer();
   const evacuationCurve = useEvacuationCurve();
   const evacuationRate = evacuationRateAt(evacuationCurve, time);
   
@@ -132,10 +134,8 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
       let nextEndTime = endTime + moveStep;
       let nextStartTime = startTime + moveStep;
 
-      // 🌟 邊界處理：超過目前情境的資料範圍（displayTimeRange，不是寫死的 86400）就重置回起點。
-      // 之前寫死 86400：shelter_in_place 資料範圍才約 1.5 小時，超過範圍後全部圖層會消失，
-      // 卻要一路空播到 24:00:00 才重置；mass_evacuation 資料範圍長達 72 小時，反而不到一天
-      // 就提早被切斷，後面 48 小時的資料永遠播不到。
+      // 🌟 邊界處理：超過目前情境的資料範圍（displayTimeRange，不是寫死的上限）就重置回起點。
+      // 不同場次的資料長度差很多（最晚抵達約警報後 46 小時），寫死上限會空播或提早切斷。
       if (nextEndTime > displayEnd) {
         nextStartTime = displayStart;
         nextEndTime = displayStart + windowWidth;
@@ -160,12 +160,14 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
   }, [selectedModes]);
 
-  // 順序:road-service → heatmap → od-arc → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
+  // 順序:road-service → road-control → heatmap → od-arc → points → stop-counts → shelter-capacity → trips（後 push 的畫在上面）
   // ⚠ points 刻意排在 stop-counts/shelter-capacity 之前：代理人剛好停在站點/避難所座標上時，
   // 讓候車人潮泡泡/飽和率圈蓋在 points 上面（泡泡本來就比較大、代表匯總資訊，蓋掉底下單點
   // 才合理），不然兩個顏色相近、不透明度都調高的圓疊在一起，會變成一個圓「缺一角」的詭異形狀
   // road-service 放最底層（heatmap 之下）：靜態尖峰路網背景，不能蓋住動態圖層
   if (roadServiceLayer) layers.push(roadServiceLayer);
+  // road-control 緊接在 road-service 之上：管制路段要蓋過服務水準的線，但仍在動態圖層底下
+  if (roadControlLayer) layers.push(roadControlLayer);
   layers.push(...heatmapLayers);
   if (odArcLayer) layers.push(odArcLayer);
   layers.push(...pointsLayers);

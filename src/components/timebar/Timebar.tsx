@@ -9,7 +9,7 @@ import { formatDurationTo24Hour } from "./utils";
 import { TimeLine } from "./TimeLine";
 import { AdjustTimeSpeedRatio } from "./AdjustTimeSpeedRatio";
 import { AdjustTimeWindow } from "./AdjustTimeWindow";
-import { RatioSelector } from "./RatioSelector";
+import { SampleSizeSelector } from "./SampleSizeSelector";
 import { useShallow } from "@sqlrooms/room-shell";
 
 export const Timebar = () => {
@@ -77,7 +77,7 @@ export const Timebar = () => {
 
         {/* 靠右對齊倍速器 */}
         <div className="ml-auto flex items-center gap-2 text-sm font-mono font-medium whitespace-nowrap">
-          <RatioSelector />
+          <SampleSizeSelector />
           <AdjustTimeWindow />
           <AdjustTimeSpeedRatio />
         </div>

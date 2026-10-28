@@ -7,11 +7,11 @@ import { useShallow } from "@sqlrooms/room-shell";
 import { useResolvedFiles } from "@/hooks/useResolvedFiles";
 
 const BIN_SIZE = 60;            // SQL 粒度:60 秒一格(夠細,JS 端再做視覺重取樣)
-const HARD_MAX_SEC = 86400;     // 顯示上限:24:00:00(超過的資料不入 bar)
+const HARD_MAX_SEC = 72 * 3600; // 顯示上限:72:00:00(模擬約到警報後 69 小時、最晚抵達約 46 小時)
 const step = 10 * 60;           // 滑桿的吸附步長:10 分鐘
 const MAX_BARS = 50;            // 視覺上希望 Timebar 最多畫幾條 bar
 
-// 動態 bins:起點 = 資料真正最小的 timestamp,終點 = MIN(資料 max, 24h)
+// 動態 bins:起點 = 資料真正最小的 timestamp,終點 = MIN(資料 max, 72h)
 const buildQuery = (dataUrl: string) => `
   WITH agent_ranges AS (
     SELECT
@@ -138,8 +138,8 @@ export const TimeLine = () => {
 
     if (hasData) {
       // 🌟 1. 設定絕對資料邊界 (View) 與 預設顯示視窗 (Display)
-      //   maxTime 已經由 SQL 端 LEAST(..., 86400) 保證 ≤ HARD_MAX_SEC,
-      //   再加上 BIN_SIZE 緩衝後仍可能跨過 86400,所以這裡再 clamp 一次。
+      //   maxTime 已經由 SQL 端 LEAST(..., HARD_MAX_SEC) 保證 ≤ HARD_MAX_SEC,
+      //   再加上 BIN_SIZE 緩衝後仍可能跨過上限,所以這裡再 clamp 一次。
       const adjustedMax = Math.min(maxTime + BIN_SIZE, HARD_MAX_SEC);
       setViewTimeRange([minTime, adjustedMax]);
       setDisplayTimeRange([minTime, adjustedMax]); // 讓視窗一開始看見全貌

@@ -11,6 +11,7 @@ import { LayerPanel } from './LayerPanel';
 import { ScenarioSwitcher } from './ScenarioSwitcher';
 import { NetworkControlToggle } from './NetworkControlToggle';
 import { RoadServiceLegend } from './RoadServiceLegend';
+import { RoadControlLegend } from './RoadControlLegend';
 import { ShelterCapacityLegend } from './ShelterCapacityLegend';
 import { Timebar } from './timebar/Timebar';
 
@@ -85,7 +86,7 @@ export const MainView: React.FC = () => {
             </div>
           )}
 
-          {/* 左下角圖例堆疊：Shelter Capacity 在上、Road Service (LOS) 固定在最下面。
+          {/* 左下角圖例堆疊：Shelter Capacity、Road Control 在上，Road Service 固定在最下面。
               底邊與 Timeline 共用 PANEL_BOTTOM_PX（底邊對齊）；以底邊定位的 flex-col，
               只開其中一個時，那一個仍貼在最下方。各圖例自己在圖層沒開 / 沒資料時回傳 null。 */}
           <div
@@ -94,6 +95,7 @@ export const MainView: React.FC = () => {
             style={{ bottom: PANEL_BOTTOM_PX, left: PANEL_EDGE_PX }}
           >
             <ShelterCapacityLegend />
+            <RoadControlLegend />
             <RoadServiceLegend />
           </div>
         </>
