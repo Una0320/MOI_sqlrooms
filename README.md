@@ -41,6 +41,13 @@
 | **時間窗口 / 倍速 / 抽樣量選擇器** | Timeline 右側由左到右：抽樣量選擇器（「抽樣」標籤 + 1萬／4萬／5萬／7萬 分段按鈕攤開，切換時重置時間軸，預設 1萬）、Time window（15／30／60 分鐘）、Speed（x30／60／120／240） | 控制播放視窗寬度、倍速與軌跡抽樣量 |
 | **移動點位 Tooltip** | 「移動軌跡」圖層放大後（zoom > 11）切成逐點顯示，可看路徑編號/運具/即時時速，時速過低會標「塞車/等待中」或「緩慢移動」 | 不用隱藏停滯的點也能用滑鼠找出卡在哪一段的路徑 |
 
+#### Evac Rate by Mode 圖表：Y 軸與 Mosaic 的使用範圍
+
+- **Y 軸**：累計完成率（%），固定 0–100。= 該運具的人中，到時間 t 為止已抵達的比例（`n_persons` 加權）；每條線各除以自己的總數，所以都會到 100%（比的是各運具內部完成得多快，不是各運具佔全體的比例）。「全部」虛線的分母是全體權重，與左上 Evac Rate 一致。算法在 `src/hooks/useEvacArrivalsView.ts`：每 60 秒一格 → 分運具累計加總 → 除以該運具總權重。
+- **有用到 `@sqlrooms/mosaic` 的部分**：`createMosaicSlice()` 接到同一個 DuckDB-WASM 連線；`vg.plot` + `vg.lineY` + `vg.from(table)` 由 Mosaic coordinator 產生 SQL 查詢並渲染；重建表後呼叫 `vg.coordinator().clear(...)` 清快取。
+- **沒用到的部分**：Mosaic `Selection`（運具開關仍只由 Zustand `selectedModes` 決定）、`VgPlotChart` 元件；點線切換、播放位置線、hover 提示都是自己用 DOM 事件／React 元件實作。
+- 面板標題旁的 ⓘ hover 說明包含以上 Y 軸定義與分類規則。
+
 ---
 
 ## 🚀 安裝與設定 (Installation & Setup)

@@ -25,6 +25,14 @@ import { useResolvedFiles } from '../hooks/useResolvedFiles';
 //
 // 如何恢復舊的 Mobility Modes 面板：MainView.tsx 把 <EvacModePanel /> 換回 <ModeSelector />（元件檔案還在）。
 
+// hover 說明：換行用 \n（原生 title 會照換行顯示）
+const EVAC_INFO_TITLE = [
+  'Y 軸：累計完成率（%）= 該運具的人中，到該時間為止已抵達的比例（人數加權）。每條線各除以自己的總數，所以都會到 100%。',
+  '分類：每個 agent 只算一次，歸入搭乘最遠的運具（RAIL > BUS > CAR > WALK）；轉乘者歸入轉乘後的運具，WALK 只含純步行者。',
+  '虛線「全部」：所有 agent，與左上角 Evac Rate 一致。',
+  '注意：地圖的運具過濾是逐段，與此圖逐 agent 的分類不同。',
+].join('\n');
+
 const MODE_NAMES = ['WALK', 'CAR', 'BUS', 'RAIL'] as const;
 type ModeName = (typeof MODE_NAMES)[number];
 
@@ -216,7 +224,7 @@ const EvacModePanel = () => {
         <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
           Evac Rate by Mode
           <span
-            title="各 agent 依搭乘最遠的運具歸類；轉乘者歸入轉乘後的運具，WALK 線只含純步行者"
+            title={EVAC_INFO_TITLE}
             className="cursor-help text-slate-500 hover:text-slate-300"
           >
             <Info size={12} />
