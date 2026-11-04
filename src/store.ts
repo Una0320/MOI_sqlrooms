@@ -5,12 +5,14 @@ import {
   LayoutTypes,
   RoomShellSliceState,
 } from '@sqlrooms/room-shell';
+import {createMosaicSlice} from '@sqlrooms/mosaic';
+import type {MosaicSliceState} from './mosaicTypes';
 import {DatabaseIcon} from 'lucide-react';
 import {MainView} from './components/MainView';
 import {DataPanel} from './components/DataPanel';
 
 // 只保留最基礎的狀態
-export type RoomState = RoomShellSliceState;
+export type RoomState = RoomShellSliceState & MosaicSliceState;
 
 export const {roomStore, useRoomStore} = createRoomStore<RoomState>(
   (set, get, store) => ({
@@ -40,5 +42,7 @@ export const {roomStore, useRoomStore} = createRoomStore<RoomState>(
         },
       },
     })(set, get, store),
+    // Mosaic 共用上面這一個 DuckDB-WASM 連線（不另開）；圖表用的是 vg.* 與全域 coordinator
+    ...createMosaicSlice()(set, get, store),
   }),
 );

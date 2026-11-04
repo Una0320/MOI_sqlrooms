@@ -17,6 +17,7 @@
     "@sqlrooms/discuss": "0.29.0-rc.1",
     "@sqlrooms/dropzone": "0.29.0-rc.1",
     "@sqlrooms/duckdb": "0.29.0-rc.1",
+    "@sqlrooms/mosaic": "0.29.0-rc.1",
     "@sqlrooms/room-shell": "0.29.0-rc.1",
     "@sqlrooms/sql-editor": "0.29.0-rc.1",
     "@sqlrooms/ui": "0.29.0-rc.1",

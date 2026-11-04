@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { SpinnerPane } from '@sqlrooms/ui';
 import { useSql } from '@sqlrooms/duckdb';
 
@@ -6,7 +6,11 @@ import { NO_DATA_HINT } from '../constants/data';
 import { LEGEND_TIMELINE_GAP_PX, PANEL_BOTTOM_PX, PANEL_EDGE_PX } from '../constants/layout';
 import { useResolvedFiles } from '../hooks/useResolvedFiles';
 import { MapView } from './MapView';
-import { ModeSelector } from './ModeSelector';
+import { useEvacTables } from '../hooks/useEvacArrivalsView';
+// 右側原本的 Mobility Modes 面板（checkbox）被「分運具 Evac Rate 折線圖」取代；ModeSelector.tsx 保留，
+// 要恢復：import { ModeSelector } from './ModeSelector'，並把下面的 <EvacModePanel /> 換回 <ModeSelector />。
+// 折線圖面板 lazy 載入（Mosaic plot 相關程式碼只在要顯示時才進來）。
+const EvacModePanel = lazy(() => import('./EvacModePanel'));
 import { LayerPanel } from './LayerPanel';
 import { ScenarioSwitcher } from './ScenarioSwitcher';
 import { NetworkControlToggle } from './NetworkControlToggle';
@@ -17,6 +21,7 @@ import { Timebar } from './timebar/Timebar';
 
 export const MainView: React.FC = () => {
   const { dataUrl } = useResolvedFiles();
+  useEvacTables(); // 建 evac_arrivals / evac_curve 表（headline Evac Rate 與折線圖共用）
 
   // 沒有軌跡資料的組合（混合避難 / 優先疏散 / 管制版…）：查一個零列的 SQL 讓 hook 保持有效，
   // 畫面上改顯示「此組合無資料」，不渲染地圖。
@@ -72,7 +77,9 @@ export const MainView: React.FC = () => {
               一起調這個數字，不然又會蓋回去。 */}
           <div className="absolute top-5 right-5 z-10 flex w-[284px] flex-col gap-2 max-h-[calc(100vh-190px)] overflow-y-auto">
             <NetworkControlToggle />
-            <ModeSelector />
+            <Suspense fallback={null}>
+              <EvacModePanel />
+            </Suspense>
             <LayerPanel />
           </div>
 

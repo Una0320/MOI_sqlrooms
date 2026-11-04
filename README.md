@@ -18,7 +18,7 @@
 ### 3. 渲染層 (Rendering Layer)
 * **Deck.gl + Custom ArrowTripsLayer**: 自定義圖層直接讀取 Arrow Vector 底層記憶體，徹底繞過 CPU 的 JSON 解析過程，將數據「零拷貝」傳遞給 GPU。
 * **supercluster 動態聚合**: 站點候車人潮圖層依目前地圖 zoom 動態合併/展開泡泡，縮小時聚合成大泡泡、放大時逐漸拆回個別站牌，避免密集站點互相重疊看不清楚。
-* **shadcn/ui**: 構建現代化、反應靈敏的互動控制面版（Timebar, ModeSelector, LayerPanel, ScenarioSwitcher）。
+* **shadcn/ui**: 構建現代化、反應靈敏的互動控制面版（Timebar, EvacModePanel, LayerPanel, ScenarioSwitcher）。
 
 ---
 
@@ -32,8 +32,9 @@
 | **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
 | **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關（開啟後改讀 ctrl 場次並出現 Road Control 圖層），由 manifest 決定每個組合有哪些檔案 | 沒資料的圖層 disabled 並提示，不隱藏 |
 | **完成率 (Evac Rate)** | 左上角 `Evac Rate`（標籤固定這個寫法），累計值、二分搜尋查表；人數口徑（依 `n_persons` 加權），基於軌跡抽樣的 agent | 看撤離進度隨時間的變化 |
+| **分運具完成率 (Evac Rate by Mode)** | 右上折線圖（`@sqlrooms/mosaic`，與主畫面共用同一個 DuckDB-WASM 連線，lazy 載入）：WALK／CAR／BUS／RAIL 各一條 + 虛線「全部」（與左上 Evac Rate 一致），圖上有播放位置線。每個 agent 依搭乘最遠的運具歸類（RAIL > BUS > CAR > WALK），與地圖的逐段運具過濾語意不同。資料來自 `evac_arrivals` / `evac_curve` / `evac_curve_all` 三張 DuckDB 表（每個情境載入時建立一次；用 TABLE 而非 VIEW，避免重複掃描遠端 parquet） | 看各運具的撤離進度；點圖例或折線即可切換地圖上的運具 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
-| **面板配置** | 右上 Network Control 滑動開關 + Mobility Modes + Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evac Rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 103px 高，與圖例底邊對齊（圖例顯示時 Timeline 左緣右移到圖例右側）；所有面板統一 1px 半透明淺色邊線 + backdrop-blur | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
+| **面板配置** | 右上 Network Control 滑動開關 + Evac Rate by Mode 折線圖（取代原本的 Mobility Modes 勾選面板；圖例與折線都可以點來切換運具）+ Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evac Rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 103px 高，與圖例底邊對齊（圖例顯示時 Timeline 左緣右移到圖例右側）；所有面板統一 1px 半透明淺色邊線 + backdrop-blur | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
 | **圖層 Tooltip** | Stop-Counts 候車泡泡／Shelter-Capacity 飽和率圈都可 hover | 不用另外查表就能核對站點候車人數與避難所收容飽和度 |
 | **道路服務水準 (Road Service)** | 讀 `06_road_service` 逐小時資料（`level` 1–6），依目前時間取該小時的路段，線色與相對線寬依 README 圖例；圖例顯示速率比範圍 | 看各小時的道路順暢／壅塞程度 |
 | **道路管制 (Road Control)** | 讀 `07_road_control`（封路／禁小客車／公車專用道，依 `start_s`/`end_s` 顯示），只有開啟 Network Control 時可用 | 對照管制措施位置 |
@@ -82,7 +83,7 @@ VITE_MAPTILER_API_KEY=
 
 ```bash
 # 安裝套件
-yarn install
+yarn install   # 請用 yarn，不要用 npm install（會把 @deck.gl/layers 等套件重排到 deck.gl/node_modules 底下導致編譯失敗）；apache-arrow 鎖定 17.0.0，所有 @sqlrooms/* 套件版本需一致（目前 0.29.0-rc.1）
 ```
 
 ### 3. 準備本機測試資料

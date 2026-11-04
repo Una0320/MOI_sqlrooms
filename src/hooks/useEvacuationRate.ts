@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSql } from '@sqlrooms/duckdb';
 import { useResolvedFiles } from './useResolvedFiles';
+import { EVAC_ARRIVALS_TABLE, useEvacTablesReady } from './useEvacArrivalsView';
 
 // 左上角的完成率曲線：以「抵達終點（該列軌跡最後一筆時間戳）」視為完成。
 //   rate(t) = 抵達時間 <= t 的權重 / 總權重 × 100
@@ -32,11 +33,14 @@ const NOTE = '人數口徑（依各 agent 的 n_persons 加權），基於軌跡
 export const useEvacuationCurve = (): EvacuationCurve => {
   const { dataUrl } = useResolvedFiles();
   const enabled = dataUrl !== null;
+  // 資料來自 useEvacArrivalsView 建的 evac_arrivals 表（軌跡 parquet 只掃一次，與分運具折線圖共用）；
+  // 表還沒建好之前查零列，hook 回 'loading'。
+  const tablesReady = useEvacTablesReady();
 
   // 沒資料的組合查一個零列 SQL（hook 不能條件式呼叫）
   const { data } = useSql<{ t_end: number; w: number }>({
-    query: enabled
-      ? `SELECT list_max(timestamps) AS t_end, COALESCE(n_persons, 1) AS w FROM read_parquet('${dataUrl}') WHERE len(timestamps) > 0 ORDER BY t_end`
+    query: tablesReady
+      ? `SELECT t_end, w FROM ${EVAC_ARRIVALS_TABLE} ORDER BY t_end`
       : 'SELECT CAST(NULL AS DOUBLE) AS t_end, CAST(NULL AS INTEGER) AS w WHERE false',
   });
   const arrowTable = data?.arrowTable;
