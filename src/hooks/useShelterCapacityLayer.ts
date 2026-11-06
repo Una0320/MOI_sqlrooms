@@ -121,7 +121,7 @@ export const useShelterCapacityLayer = () => {
         data: snapshots,
         getPosition: (d: ShelterSnapshot) => [d.x, d.y, 0],
         getFillColor: (d: ShelterSnapshot) => SHELTER_STATUS_COLORS[d.status] ?? [200, 200, 200, 180],
-        getRadius: (d: ShelterSnapshot) => Math.min(20, 6 + d.loadRatio * 8),
+        getRadius: (d: ShelterSnapshot) => Math.min(20, 10 + d.loadRatio * 6),
         radiusUnits: 'pixels',
         radiusMinPixels: 4,
         pickable: true,
