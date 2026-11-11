@@ -31,7 +31,7 @@
 | **零拷貝渲染 (Zero-Copy)** | `ArrowTripsLayer` 直接讀取底層 Buffer | 消除大量資料轉 JSON 的記憶體暴增與延遲 |
 | **高效能過濾 (Bitmask)** | WebGL Shader + 二進位運具過濾 | 在 GPU 內實現毫秒級的顯示模式切換 |
 | **動態時間軸 (Timebar)** | 雙層區間控制 (Display/Active Range) | 提供專業級的數據觀測解析度，支援區間平移 (Panning) |
-| **即時直方圖 (Histogram)**| DuckDB SQL 聚合 (Bins) | 視覺化時間軸上的數據分佈密度，動態自適應資料邊界 |
+| **即時直方圖 (Histogram)**| DuckDB SQL 差分聚合 (`evac_transit`) | 時間軸上每個時間格的「在途人數」，依運具堆疊，並隨右側勾選的運具即時增減（不重打 SQL） |
 | **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關（開啟後改讀 ctrl 場次並出現 Road Control 圖層），由 manifest 決定每個組合有哪些檔案 | 沒資料的圖層 disabled 並提示，不隱藏 |
 | **完成率 (Evac Rate)** | 左上角 `Evac Rate`（標籤固定這個寫法），累計值、二分搜尋查表；人數口徑（依 `n_persons` 加權），基於軌跡抽樣的 agent | 看撤離進度隨時間的變化 |
 | **分運具完成率 (Evac Rate by Mode)** | 右上折線圖（`@sqlrooms/mosaic`，與主畫面共用同一個 DuckDB-WASM 連線，lazy 載入）：WALK／CAR／BUS／RAIL 各一條 + 虛線「全部」（與左上 Evac Rate 一致），圖上有播放位置線。每個 agent 依搭乘最遠的運具歸類（RAIL > BUS > CAR > WALK），與地圖的逐段運具過濾語意不同。資料來自 `evac_arrivals` / `evac_curve` / `evac_curve_all` 三張 DuckDB 表（每個情境載入時建立一次；用 TABLE 而非 VIEW，避免重複掃描遠端 parquet） | 看各運具的撤離進度；點圖例或折線即可切換地圖上的運具 |
@@ -154,9 +154,13 @@ yarn preview  # 本機預覽 build 出來的 dist/
 
 ---
 
+## 📊 Timeline 直方圖的定義
+
+- **在途** = 已出發（`departure_s <= t`）且尚未抵達（`t <` 最後一個時間戳），**包含停在站上等車的人**；單位是**人數**（`n_persons` 加權），不是 agent 數。每個時間格取「格起點時刻」的瞬時值（60 秒一格，畫面最多約 50 根長條）。
+- 每根長條由 WALK / CAR / BUS / RAIL 四段**堆疊**（自下而上，顏色同地圖）。運具是這個人**當下那一段**的運具（停在站上等車的靜止段標的是要搭的車），所以四段加總 = 在途總人數；這與**地圖的逐段過濾一致**，而與 Evac Rate by Mode 折線圖「每個 agent 只算搭乘最遠的運具」**不同**，兩者用意不同。
+- 取消勾選的運具不畫，上方區段往下收合。高度的分母固定為「四運具全選時最大的時間格總人數」，不隨勾選改變，所以取消運具時長條會真的變矮；全部取消時直方圖是空的。整根低於容器 5% 時等比例放大到 5%，非零區段至少 1 px。
+- 資料來自 `evac_transit` 表，與 Evac Rate、折線圖共用同一次 parquet 掃描（見 CLAUDE.md）。這是**抽樣軌跡**的人數，不是全體統計。
+
 ## 📝 TODO
 
-* **Timebar 依 mode 過濾直方圖**: 目前 `TimeLine.tsx` 的直方圖 query 只用 `timestamps` 統計每個 bin 的 agent 數量，未讀取 `modes` 欄位，也未接上 `selectedModes` state；勾選/取消 ModeSelector 的運具不會影響時間軸下方的長條圖分布。
-  * 方案 A（SQL 端）：query 依 `selectedModes` 動態組 `WHERE modes ...`，直方圖只統計符合的 agent。
-  * 方案 B（JS 端）：一次撈出 timestamp 對應的 mode，前端依 `selectedModes` 重新計算直方圖，避免每次切換都重打 DuckDB。
 * **`01_trajectory` 逐運具拆檔**: 目前 trips/OD 都是走 `05_moi_sim` 的相容格式（單檔含全部運具），`01_trajectory`（每運具獨立、欄位更豐富，例如 `dist_road_m`/`is_teleport_walk`）還沒用上。

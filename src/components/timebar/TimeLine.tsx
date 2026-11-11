@@ -4,45 +4,24 @@ import { useEffect, useMemo, useRef } from "react";
 import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
-import { useResolvedFiles } from "@/hooks/useResolvedFiles";
+import { EVAC_TRANSIT_BIN_SEC, EVAC_TRANSIT_TABLE, useEvacTablesReady } from "@/hooks/useEvacArrivalsView";
+import { AGENT_MODE_TRIP_COLORS } from "@/constants/map";
+import { MIN_BAR_FRACTION, STACK_MODE_BITS, buildTransitGrid, stackBars } from "./transitHistogram";
 
-const BIN_SIZE = 60;            // SQL 粒度:60 秒一格(夠細,JS 端再做視覺重取樣)
+const BIN_SIZE = EVAC_TRANSIT_BIN_SEC; // 直方圖粒度:60 秒一格,必須與 evac_transit 表的格寬一致(JS 端再做視覺重取樣)
 const HARD_MAX_SEC = 72 * 3600; // 顯示上限:72:00:00(模擬約到警報後 69 小時、最晚抵達約 46 小時)
 const step = 10 * 60;           // 滑桿的吸附步長:10 分鐘
 const MAX_BARS = 50;            // 視覺上希望 Timebar 最多畫幾條 bar
 
-// 動態 bins:起點 = 資料真正最小的 timestamp,終點 = MIN(資料 max, 72h)
-const buildQuery = (dataUrl: string) => `
-  WITH agent_ranges AS (
-    SELECT
-      list_min(timestamps) AS t_start,
-      list_max(timestamps) AS t_end
-    FROM read_parquet('${dataUrl}')
-  ),
-  bounds AS (
-    SELECT
-      CAST(MIN(t_start) AS BIGINT) AS data_min,
-      LEAST(CAST(MAX(t_end) AS BIGINT), ${HARD_MAX_SEC}) AS data_max
-    FROM agent_ranges
-  ),
-  bins AS (
-    SELECT unnest(generate_series(
-      (SELECT data_min FROM bounds),
-      (SELECT data_max FROM bounds),
-      ${BIN_SIZE}
-    )) AS bin_start
-  )
-  SELECT
-    b.bin_start AS time_bin,
-    COUNT(*) AS count
-  FROM bins b
-  CROSS JOIN agent_ranges a
-  WHERE
-    a.t_end >= b.bin_start AND
-    a.t_start < (b.bin_start + ${BIN_SIZE})
-  GROUP BY b.bin_start
-  ORDER BY b.bin_start ASC;
-`;
+// 直方圖資料 = evac_transit 表（hooks/useEvacArrivalsView.ts 建，與折線圖、Evac Rate 共用同一次 parquet 掃描）：
+// 每個運具「在途人數」（已出發、尚未抵達，包含停在站上等車；單位是人，n_persons 加權）的階梯函數。
+// 表建好之前查零列（hook 不能條件式呼叫），這時不畫長條。切換 selectedModes 完全不碰 SQL，只重算長條高度。
+const TRANSIT_QUERY = `SELECT t, mode, persons FROM ${EVAC_TRANSIT_TABLE} ORDER BY mode, t`;
+const EMPTY_QUERY = 'SELECT CAST(NULL AS INTEGER) AS t, CAST(NULL AS UTINYINT) AS mode, CAST(NULL AS INTEGER) AS persons WHERE false';
+const BAR_RGB = STACK_MODE_BITS.map((bit) => {
+  const [r, g, b] = AGENT_MODE_TRIP_COLORS[Math.log2(bit)]; // 顏色表的索引 = log2(運具 bit)：WALK 0、CAR 1、BUS 3、RAIL 4
+  return `rgb(${r} ${g} ${b})`;
+});
 
 export const TimeLine = () => {
   // 🌟 把原本的 useGlobalTimer 和 dispatch 換成 Zustand
@@ -55,6 +34,7 @@ export const TimeLine = () => {
     setIsPlaying,
     setViewTimeRange,
     setTime,
+    selectedModes,
   } = useMapStore(useShallow((state) => ({
     viewTimeRange: state.viewTimeRange,
     displayTimeRange: state.displayTimeRange,
@@ -64,11 +44,10 @@ export const TimeLine = () => {
     setIsPlaying: state.setIsPlaying,
     setViewTimeRange: state.setViewTimeRange,
     setTime: state.setTime,
+    selectedModes: state.selectedModes,
   })));
 
-  // Timebar 只在有軌跡資料（dataUrl 非 null）時才會被 MainView 掛載，這裡的 ?? '' 只是滿足型別
-  const { dataUrl } = useResolvedFiles();
-  const query = buildQuery(dataUrl ?? '');
+  const tablesReady = useEvacTablesReady();
 
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<string | null>(null); 
@@ -78,42 +57,27 @@ export const TimeLine = () => {
   const lastValueRef = useRef(timeRange[0]);
   const animationFrameRef = useRef<number | null>(null);
 
-  const { data: queryResult } = useSql<{ time_bin: number; count: number }>({ query });
+  const { data: queryResult } = useSql<{ t: number; mode: number; persons: number }>({
+    query: tablesReady ? TRANSIT_QUERY : EMPTY_QUERY,
+  });
   const duckData = queryResult?.arrowTable;
 
-  const histogramBars = useMemo(() => {
-    if (!duckData) return [];
+  // 時間格 × 運具 的 typed array；只在資料（情境 / 抽樣量）變動時重算一次
+  const grid = useMemo(() => {
+    if (!duckData || duckData.numRows === 0) return null;
+    const t = duckData.getChild('t')?.toArray() as ArrayLike<number> | undefined;
+    const mode = duckData.getChild('mode')?.toArray() as ArrayLike<number> | undefined;
+    const persons = duckData.getChild('persons')?.toArray() as ArrayLike<number> | undefined;
+    if (!t || !mode || !persons) return null;
+    return buildTransitGrid(t, mode, persons, BIN_SIZE);
+  }, [duckData]);
 
-    const rows: any[] = duckData.toArray().map((r: any) => r.toJSON());
-
-    if (rows.length === 0) return [];
-
-    const [startSec, endSec] = viewTimeRange;
-
-    let currentBinSize = BIN_SIZE;
-    let totalBars = Math.ceil((endSec - startSec) / currentBinSize);
-
-    if (totalBars > MAX_BARS) {
-      currentBinSize = (endSec - startSec) / MAX_BARS;
-      totalBars = MAX_BARS;
-    }
-
-    const counts = new Float32Array(totalBars);
-    let maxCount = 0;
-
-    for (const row of rows) {
-      const binTime = Number(row.time_bin); 
-      const count = Number(row.count);
-      const index = Math.floor((binTime - startSec) / currentBinSize);
-
-      if (index >= 0 && index < totalBars) {
-        counts[index] = count;
-        if (count > maxCount) maxCount = count;
-      }
-    }
-
-    return Array.from(counts, (c) => (maxCount > 0 ? c / maxCount : 0));
-  }, [duckData, viewTimeRange]);
+  // 每根長條 4 個運具的高度（佔「四運具全選時最大總高」的比例）。切換 selectedModes 只會重跑這裡，不碰 SQL。
+  // 分母固定為全選時的最大值，所以取消某運具時長條會真的變矮。
+  const bars = useMemo(
+    () => (grid ? stackBars(grid, selectedModes, viewTimeRange[0], viewTimeRange[1], BIN_SIZE, MAX_BARS) : null),
+    [grid, selectedModes, viewTimeRange],
+  );
 
   const getPercent = (val: number) => ((val - viewTimeRange[0]) / (viewTimeRange[1] - viewTimeRange[0])) * 100;
   
@@ -123,23 +87,14 @@ export const TimeLine = () => {
   const widthPct = getPercent(timeRange[1]) - leftPct;
 
   useEffect(() => {
-    let minTime = 0;
-    let maxTime = 0;
-    let hasData = false;
-
-    if (duckData && duckData.numRows > 0) {
-      const timeBinCol = duckData.getChild('time_bin');
-      if (timeBinCol) {
-        minTime = Number(timeBinCol.get(0));
-        maxTime = Number(timeBinCol.get(duckData.numRows - 1));
-        hasData = true;
-      }
-    }
+    // 時間軸起點固定為警報時刻 0；終點 = 資料最後一個時間格（≤ HARD_MAX_SEC）
+    const minTime = 0;
+    const hasData = grid !== null;
+    const maxTime = grid ? Math.min((grid.nBins - 1) * grid.binSec, HARD_MAX_SEC) : 0;
 
     if (hasData) {
       // 🌟 1. 設定絕對資料邊界 (View) 與 預設顯示視窗 (Display)
-      //   maxTime 已經由 SQL 端 LEAST(..., HARD_MAX_SEC) 保證 ≤ HARD_MAX_SEC,
-      //   再加上 BIN_SIZE 緩衝後仍可能跨過上限,所以這裡再 clamp 一次。
+      //   maxTime 已 clamp 在 HARD_MAX_SEC 以內,再加上 BIN_SIZE 緩衝後可能跨過上限,所以這裡再 clamp 一次。
       const adjustedMax = Math.min(maxTime + BIN_SIZE, HARD_MAX_SEC);
       setViewTimeRange([minTime, adjustedMax]);
       setDisplayTimeRange([minTime, adjustedMax]); // 讓視窗一開始看見全貌
@@ -151,7 +106,7 @@ export const TimeLine = () => {
       // 🌟 3. 將地圖的光束時間也移過去！(不再從 0 開始)
       setTime(initialEnd);
     }
-  }, [duckData, setViewTimeRange, setDisplayTimeRange, setTimeRange, setTime]);
+  }, [grid, setViewTimeRange, setDisplayTimeRange, setTimeRange, setTime]);
 
   const getValueFromClientX = (clientX: number, useStep = false) => {
     if (!trackRef.current) return 0;
@@ -252,23 +207,48 @@ export const TimeLine = () => {
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
-  // 畫面渲染邏輯保持完全一樣
+  // 一根長條 = 四個運具區段堆疊（自下而上 WALK、CAR、BUS、RAIL）。沒勾選或人數 0 的區段不畫，上方的自動往下收合；
+  // 整根總高低於 MIN_BAR_FRACTION 時等比例放大到該高度（區段比例不變）；非零區段至少 1px，整根被容器裁切、不會超出。
+  // dim = 時間窗口以外的部分（同樣的長條，只是變淡）。
+  const renderBars = (dim: boolean) => {
+    if (!bars) return null;
+    const out = [];
+    for (let i = 0; i < bars.nBars; i++) {
+      const base = i * 4;
+      const total = bars.seg[base] + bars.seg[base + 1] + bars.seg[base + 2] + bars.seg[base + 3];
+      if (total <= 0) {
+        out.push(<div key={i} className="flex-1" />); // 空長條只佔位，維持間距
+        continue;
+      }
+      out.push(
+        <div
+          key={i}
+          className="flex flex-1 flex-col-reverse overflow-hidden rounded-t-[1px]"
+          style={{ height: `${Math.max(total, MIN_BAR_FRACTION) * 100}%`, opacity: dim ? 0.4 : 1 }}
+        >
+          {STACK_MODE_BITS.map((bit, m) => {
+            const v = bars.seg[base + m];
+            return v > 0 ? <div key={bit} style={{ flexGrow: v, flexBasis: 0, minHeight: 1, backgroundColor: BAR_RGB[m] }} /> : null;
+          })}
+        </div>,
+      );
+    }
+    return out;
+  };
+
+  // 畫面渲染邏輯保持完全一樣（只有長條內容改成依運具堆疊）
   return (
     <div className="relative flex w-full touch-none select-none items-center" ref={trackRef}>
       <div className="relative h-8 w-full grow overflow-hidden bg-[#2B2B38] border border-slate-700 rounded-sm">
         <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
           <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
-            {histogramBars.map((heightRatio, i) => (
-              <div key={`bg-${i}`} className="flex-1 bg-slate-600/50 rounded-t-[1px]" style={{ height: `${Math.max(heightRatio * 100, 5)}%` }} />
-            ))}
+            {renderBars(true)}
           </div>
           <div 
             className="absolute inset-0 flex items-end justify-between px-0.5 pb-0 gap-0 transition-none will-change-[clip-path]"
             style={{ clipPath: `inset(0 ${100 - (leftPct + widthPct)}% 0 ${leftPct}%)` }}
           >
-            {histogramBars.map((heightRatio, i) => (
-              <div key={`fg-${i}`} className="flex-1 rounded-t-[1px] bg-cyan-500" style={{ height: `${Math.max(heightRatio * 100, 5)}%` }} />
-            ))}
+            {renderBars(false)}
           </div>
         </div>
         {/* 窗口本體（可整個左右拖曳平移，游標 grab；不能拉寬度）。樣式維持原本的淡灰填色 + 青色細邊；
