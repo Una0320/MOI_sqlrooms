@@ -28,7 +28,7 @@ export type EvacuationCurve = {
 
 // ⚠ 面板標籤固定為 'Evac Rate'（E、R 大寫，中間一個空格）——使用者明確指定，不要改字樣、大小寫或字級。
 const LABEL = 'Evac Rate';
-const NOTE = '人數口徑（依各 agent 的 n_persons 加權），基於軌跡抽樣的 agent。';
+const NOTE = '人數口徑（依各 agent 的 n_persons 加權），基於軌跡抽樣的 agent。由抽樣軌跡估計，非全體統計。';
 
 export const useEvacuationCurve = (): EvacuationCurve => {
   const { dataUrl } = useResolvedFiles();

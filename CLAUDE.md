@@ -117,6 +117,14 @@ All in-browser SQL goes through **one** DuckDB-WASM instance — the SQLRooms co
 - **To restore the old Mobility Modes panel**: in `MainView.tsx` import `ModeSelector` from `./ModeSelector` and replace `<EvacModePanel />` with it (`ModeSelector.tsx` is kept untouched; there is a comment at the usage site).
 - Bundle (production build, this repo, vs. before): main chunk 5,860.01 → 5,969.28 kB (+109.27 kB, gzip +36.40 kB: the mosaic slice has to be in the store, so it can't be lazy); new lazy chunk `EvacModePanel` 604.49 kB (gzip 205.53 kB, only fetched when the panel renders). The three tables build in ~0.1–0.5 s for 1萬–7萬 agents with a local DuckDB (arrivals 70–480 ms, curves < 30 ms); in-browser time wasn't measured here because headless Chrome with software WebGL blocks the page for tens of seconds even on the original code.
 
+## 資料口徑原則（資料設計師說明）
+
+- **有明確統計數字的資料一律是全體模擬人口的原始值，不經抽樣**（全體可能超過 10 萬人）：Stop Counts 候車人數、Shelter Capacity 收容人數，以及 Road Service／Road Control 同屬全體。
+- **`05_moi_sim` 軌跡檔只是為了前端順暢而抽樣**（各情境約 1 萬列起），僅供繪製軌跡，**不可當作全體統計來源**。OD Arc 與軌跡逐列同一批 agent，同樣是抽樣。
+- 因此 **Evac Rate 目前是由抽樣軌跡「估計」的**（hover 已註明「由抽樣軌跡估計，非全體統計」），應改由全體統計檔提供——**待資料端確認**後再改。
+- **抽樣比例（約 8.1 %）只是我們用 Stop Counts 總和 ÷ 抽樣總和反推的估計值**，前提是 Stop Counts 為全體；尚未經資料端確認、各情境也不同，**不可寫死在 UI**。
+- 抽樣軌跡只適合看「時間點分布」與「組成比例」（前提是抽樣均勻），不要用來估人數或容量。
+
 ## Conventions
 - **`apache-arrow` is pinned to `17.0.0`** (exact, plus `resolutions`/`overrides` in `package.json`). Do NOT bump it. The SQLRooms packages pin `17.0.0` and `@duckdb/duckdb-wasm` requires `^17`; if a second arrow version (e.g. 21) gets hoisted, the SQLRooms connector's `new arrow.Table(batches)` receives RecordBatches built by a *different* arrow instance, the internal `instanceof RecordBatch` check fails, and the Table constructor recurses infinitely → `RangeError: Maximum call stack size exceeded` on every query. Keep one arrow version across the whole tree.
 - **Dependencies — use `yarn`, not `npm install`.** `yarn.lock` is the lockfile of record; `package-lock.json` is stale and was not updated when `@sqlrooms/mosaic` was added. `npm install` re-resolves the tree (the existing `@loaders.gl` 4.3 vs 4.4 peer conflict) and moves `@deck.gl/layers` / `@deck.gl/geo-layers` out of the top level into `node_modules/deck.gl/node_modules/`, which breaks the direct imports in `src/` (`Cannot find module '@deck.gl/layers'`) — `yarn add` keeps the hoisting. `@sqlrooms/mosaic` is `0.29.0-rc.1`, **exactly the same version as every other `@sqlrooms/*` package** (check with `npm ls`); keep them in lock-step. After any install: `npm ls apache-arrow` must show only `17.0.0` (it does with mosaic: 16 entries, all 17.0.0 / deduped).
