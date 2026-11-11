@@ -9,7 +9,7 @@ A high-performance city-mobility trajectory visualizer built on **SQLRooms + Dec
 ## Commands
 
 ```bash
-yarn install      # install deps (yarn is the lockfile of record; package-lock.json also present but stale — see "Dependencies" under Conventions)
+yarn install      # install deps (yarn is the only package manager; package-lock.json was removed — see "Dependencies" under Conventions)
 yarn dev          # Vite dev server
 yarn build        # tsc -b && vite build
 yarn lint         # eslint .
@@ -127,7 +127,7 @@ All in-browser SQL goes through **one** DuckDB-WASM instance — the SQLRooms co
 
 ## Conventions
 - **`apache-arrow` is pinned to `17.0.0`** (exact, plus `resolutions`/`overrides` in `package.json`). Do NOT bump it. The SQLRooms packages pin `17.0.0` and `@duckdb/duckdb-wasm` requires `^17`; if a second arrow version (e.g. 21) gets hoisted, the SQLRooms connector's `new arrow.Table(batches)` receives RecordBatches built by a *different* arrow instance, the internal `instanceof RecordBatch` check fails, and the Table constructor recurses infinitely → `RangeError: Maximum call stack size exceeded` on every query. Keep one arrow version across the whole tree.
-- **Dependencies — use `yarn`, not `npm install`.** `yarn.lock` is the lockfile of record; `package-lock.json` is stale and was not updated when `@sqlrooms/mosaic` was added. `npm install` re-resolves the tree (the existing `@loaders.gl` 4.3 vs 4.4 peer conflict) and moves `@deck.gl/layers` / `@deck.gl/geo-layers` out of the top level into `node_modules/deck.gl/node_modules/`, which breaks the direct imports in `src/` (`Cannot find module '@deck.gl/layers'`) — `yarn add` keeps the hoisting. `@sqlrooms/mosaic` is `0.29.0-rc.1`, **exactly the same version as every other `@sqlrooms/*` package** (check with `npm ls`); keep them in lock-step. After any install: `npm ls apache-arrow` must show only `17.0.0` (it does with mosaic: 16 entries, all 17.0.0 / deduped).
+- **Dependencies — use `yarn`, not `npm install`.** `yarn.lock` is the only lockfile (`package.json` pins `"packageManager": "yarn@1.22.22"`). `package-lock.json` was **removed**: it had drifted badly out of sync with `package.json` (it locked `apache-arrow` 21.1.0 and lacked `@sqlrooms/mosaic`, so `npm ci` failed). Don't recreate it. `npm install` re-resolves the tree (the existing `@loaders.gl` 4.3 vs 4.4 peer conflict) and moves `@deck.gl/layers` / `@deck.gl/geo-layers` out of the top level into `node_modules/deck.gl/node_modules/`, which breaks the direct imports in `src/` (`Cannot find module '@deck.gl/layers'`) — `yarn add` keeps the hoisting. `@sqlrooms/mosaic` is `0.29.0-rc.1`, **exactly the same version as every other `@sqlrooms/*` package** (check with `npm ls`); keep them in lock-step. After any install: `npm ls apache-arrow` must show only `17.0.0` (it does with mosaic: 16 entries, all 17.0.0 / deduped).
 - **Time unit is seconds everywhere** (timestamps are seconds after the alert; the sim runs to ~69h and the latest arrival is ~46h, so `TimeLine.tsx`'s `HARD_MAX_SEC` is 72h, not 24h), in both Zustand and DuckDB queries. Do not mix in JS milliseconds (formatting helpers in `timebar/utils.ts` multiply by 1000 only for display).
 - Path alias `@/` → `src/` (configured in `vite.config.ts` and tsconfig).
 - shadcn/ui configured via `components.json` (style `radix-nova`, base color neutral); UI primitives in `src/components/ui/`.

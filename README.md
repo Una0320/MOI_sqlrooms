@@ -1,5 +1,7 @@
 # 修改MOI_Simulation => MOI_SQLRooms
 
+> 本專案使用 **yarn**，請勿使用 `npm install`。
+
 這是一個基於 **React**、**Deck.gl** 與 **DuckDB WASM** 構建的高效能城市移動軌跡動態可視化系統。專為處理海量（20,000+ 筆）Agent-Based Modeling (ABM) 軌跡數據而設計，實現了零拷貝（Zero-copy）渲染與即時 SQL 聚合分析。現在延伸成一個防災情境視覺化工具：畫面正上方可以在「就地避難」與「大規模疏散」兩種情境之間切換，各自帶出自己的軌跡資料、OD 起迄弧線，以及情境專屬的疊圖（公車/捷運站點候車人潮、避難所收容飽和率）。
 
 ## 🏗️ 核心架構 (System Architecture)
