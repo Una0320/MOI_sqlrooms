@@ -323,9 +323,9 @@ export const TimeLine = () => {
           <span className="pointer-events-none block h-full w-0.5 bg-slate-500/70" />
         </div>
       ))}
-      {/* 播放頭握把：窗口終點（也就是 Time 與 Evac Rate 用的時間）上方的圓形握把。白色圓、2px 深色外圈，直徑 16px，
+      {/* 播放頭握把：窗口終點（也就是 Time 與 Evac Rate 用的時間）上方的圓形握把。白色圓、2px 深色外圈，直徑 12px，
           中心比圖表區上緣低 4px（所以略凸出，凸出量 ≤ Timebar 標題列與圖表區之間的 8px 間距，不會蓋到標題，也不增加總高）。
-          透明感應區 28px。hover：放大到約 20px、游標 grab；拖曳中：游標 grabbing、加 2px #DF9651 外環。
+          透明感應區 28px。hover：放大到約 15px、游標 grab；拖曳中：游標 grabbing、加 2px #DF9651 外環。
           拖曳改變窗口終點，起點 = 終點 − 窗口寬度，且不小於時間軸起點。放在灰色顯示範圍把手之後（z-30），不會被蓋住。 */}
       <div
         className={`group absolute z-30 flex h-7 w-7 items-center justify-center ${playheadDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -336,7 +336,7 @@ export const TimeLine = () => {
         data-playhead-handle
       >
         <span
-          className={`pointer-events-none block h-4 w-4 rounded-full bg-white transition-[transform,box-shadow] ${
+          className={`pointer-events-none block h-3 w-3 rounded-full bg-white transition-[transform,box-shadow] ${
             playheadDragging
               ? 'scale-125 shadow-[0_0_0_2px_#1e1e24,0_0_0_4px_#DF9651]'
               : 'shadow-[0_0_0_2px_#1e1e24] group-hover:scale-125'
