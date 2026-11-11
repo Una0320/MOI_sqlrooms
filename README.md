@@ -62,6 +62,9 @@ VITE_DUCKDB_CONNECTION_STRING=http://localhost:7780
 
 # 選填：不填就 fallback 回 CARTO dark-matter 底圖
 VITE_MAPTILER_API_KEY=
+
+# 選填、目前沒有畫面用到（只有未啟用的 geoFanceLayer 讀它），可不填
+VITE_TOWN_SELECT_GEOJSON_FILE_NAME=
 ```
 
 實際會讀哪些檔案（trips / OD arc / 站點候車人潮 / 避難所容量 / Road Service），是由 `src/constants/data.ts` 的 manifest（`resolveFiles`）依畫面上選的情境、抽樣量與路網管制決定，不用另外在 `.env` 裡指定檔名。
@@ -96,7 +99,13 @@ yarn install   # 請用 yarn，不要用 npm install（會把 @deck.gl/layers �
 ```
 
 ### 3. 準備本機測試資料
-本機開發用的測試資料放在 `sim_data/` 底下的單一交付批次資料夾（已加入 `.gitignore`，不隨 repo 一起走，需要另外跟專案負責人索取一份）。資料夾名稱每次交付可能不同，不一定是日期格式，請以實際拿到的為準（目前是 `sim_data/20261023/`）。
+**資料不在 git 內**：`sim_data/` 約 2.1 GB（目前的 `20261023` 批次），已加入 `.gitignore`，不會隨 repo 走；且資料屬保密、受限制，請勿提交到 git 或放到公開位置。
+
+- **取得方式**：目前沒有公開的下載位置，也沒有在文件中記載存放處，請向專案負責人索取一份。
+- **放置路徑**：專案根目錄下的 `sim_data/<交付批次資料夾>/`（目前是 `sim_data/20261023/`，裡面是 `02_points` … `08_heatmap` 各子資料夾與資料夾內的 `README.md`）。
+- **本機提供資料**：`npx http-server sim_data/20261023 -p 7780 --cors`（埠號 7780 要與 `.env` 的 `VITE_DUCKDB_CONNECTION_STRING=http://localhost:7780` 一致）。
+
+本機開發用的測試資料放在 `sim_data/` 底下的單一交付批次資料夾（需要另外跟專案負責人索取一份）。資料夾名稱每次交付可能不同，不一定是日期格式，請以實際拿到的為準（目前是 `sim_data/20261023/`）。
 
 ⚠️ **這一步不能跳過**：`clone` 下來的專案預設沒有這個資料夾。如果直接 `yarn dev` 卻沒有先準備好 `sim_data/` 並啟動下面的資料伺服器，前端畫面會卡在 Loading 轉圈，或是左上角跳出紅色錯誤訊息（類似 `IO Error: Could not connect to server ...`）——這是 DuckDB-WASM 連不到 `VITE_DUCKDB_CONNECTION_STRING` 指到的資料伺服器，不是程式壞掉，把資料夾補齊、伺服器啟動起來就會恢復正常。
 
@@ -125,6 +134,14 @@ yarn preview  # 本機預覽 build 出來的 dist/
 ```
 
 部署目標是 Netlify（見 `netlify.toml`）：`yarn build` → 上傳 `dist/`，設定裡有 `CI=false` 跟加大的 Node heap（處理大量 Parquet/Arrow 資料時避免 build 階段記憶體不足）。
+
+**部署時要在 Netlify（Site settings → Environment variables）設定的變數**（`VITE_` 開頭的值會在建置時寫進前端程式碼，改了要重新 build；值都是公開可見的，不要放機密）：
+
+| 變數 | 必填 | 說明 |
+|:--|:--|:--|
+| `VITE_DUCKDB_CONNECTION_STRING` | 是 | 資料伺服器的網址（需支援 Range Requests 與 CORS）。部署後不能是 `localhost`，要指到瀏覽器連得到的位置；資料怎麼提供尚未決定（見「準備本機測試資料」） |
+| `VITE_MAPTILER_API_KEY` | 否 | 不設就用 CARTO 底圖；設了 key 會被包進前端，請在 MapTiler 後台限制允許的網域 |
+| `VITE_TOWN_SELECT_GEOJSON_FILE_NAME` | 否 | 目前沒有畫面用到，可不設 |
 
 ---
 
