@@ -1,4 +1,5 @@
 import { MapboxOverlay as DeckOverlay, MapboxOverlayProps } from '@deck.gl/mapbox';
+import type { Layer, PickingInfo } from '@deck.gl/core';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl, useControl } from 'react-map-gl/maplibre';
@@ -6,7 +7,7 @@ import type * as arrow from 'apache-arrow';
 
 import { BASEMAP_STYLE } from '../constants/basemap';
 import { PANEL_FRAME } from '../constants/layout';
-import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM, MODE_BIT_LABELS, SHELTER_STATUS_LABELS } from '../constants/map';
+import { AGENT_MODE_TRIP_COLORS, INITIAL_VIEW_STATE, MAP_MIN_ZOOM, MAP_MAX_ZOOM, SHELTER_STATUS_LABELS } from '../constants/map';
 import { LAYER_IDS } from '../constants/layers';
 import { ArrowTripsLayer } from './custom_layer/arrowTripsLayer/ArrowTripsLayer';
 import { ArrowLoader, ArrowWorkerLoader } from '@loaders.gl/arrow';
@@ -54,7 +55,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     lastViewState = e.viewState;
   }, []);
   // Stop Counts / Shelter Capacity 的 hover tooltip：依 layer id 分辨物件形狀
-  const getTooltip = useCallback((info: any) => {
+  const getTooltip = useCallback((info: PickingInfo) => {
     const obj = info?.object;
     if (!obj) return null;
     if (info.layer?.id === 'stop-counts-layer') {
@@ -81,28 +82,35 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
   // heatmap 讀自己的 08_heatmap 查詢;points 與 trips 共用同一份軌跡 arrowTable。
   const heatmapLayers = useHeatmapLayer(debouncedTimeRange);
   const odArcLayer = useODArcLayer();
-  const { layers: pointsLayers, meta: pointsMeta } = usePointsLayer(arrowTable, currentZoom);
+  // 點擊釘選的 agent（trips 資料列索引）：卡片每幀跟著它走；點空白處取消，點另一個 agent 就換過去
+  const [pinnedAgent, setPinnedAgent] = useState<number | null>(null);
+  useEffect(() => setPinnedAgent(null), [arrowTable]); // 換情境/抽樣量後索引失效
+  const { layers: pointsLayers, meta: pointsMeta, aggMeta: pointsAggMeta, waitMeta: pointsWaitMeta } = usePointsLayer(arrowTable, currentZoom, pinnedAgent);
   const pointsMetaRef = useRef(pointsMeta);
   pointsMetaRef.current = pointsMeta;
+  const pointsAggMetaRef = useRef(pointsAggMeta);
+  pointsAggMetaRef.current = pointsAggMeta;
+  const pointsWaitMetaRef = useRef(pointsWaitMeta);
+  pointsWaitMetaRef.current = pointsWaitMeta;
 
   // Points 圖層用 binary attributes，沒有 per-instance 物件可供 picking（obj 一定是
   // undefined），要靠 info.index 去查 usePointsLayer 算好的 meta——meta 是同一個 array
   // 參照每幀原地更新，這裡讀到的永遠是當下畫面對應的資料，不會有 stale closure 問題。
-  const getPointTooltip = useCallback((info: any) => {
-    if (info.layer?.id !== 'trips-point') return null;
-    const m = pointsMetaRef.current[info.index];
-    if (!m || !m.visible) return null;
-    const modeLabel = MODE_BIT_LABELS[m.mode] ?? '未知';
-    const speedText = m.segDurationSec > 0 ? `${m.speedKmh.toFixed(1)} km/h` : '—';
-    return {
-      text: `路徑編號: ${info.index}\n運具: ${modeLabel}\n目前路段時速: ${speedText}${m.statusLabel ? `（${m.statusLabel}）` : ''}`,
-    };
+  const handleClick = useCallback((info: PickingInfo) => {
+    const layerId = info.layer?.id;
+    if (layerId === 'trips-point' || layerId === 'trips-point-multi' || layerId === 'trips-point-wait') {
+      const list =
+        layerId === 'trips-point-multi'
+          ? pointsAggMetaRef.current
+          : layerId === 'trips-point-wait'
+            ? pointsWaitMetaRef.current
+            : pointsMetaRef.current;
+      const m = list[info.index];
+      if (m && m.visible && m.agent >= 0) setPinnedAgent(m.agent);
+      return;
+    }
+    if (!info.layer) setPinnedAgent(null); // 點到空白處：取消釘選（點到其他圖層的物件則不動）
   }, []);
-
-  const combinedGetTooltip = useCallback(
-    (info: any) => getTooltip(info) ?? getPointTooltip(info),
-    [getTooltip, getPointTooltip]
-  );
 
   const stopCountsLayers = useStopCountsLayer(currentZoom);
   const shelterCapacityLayers = useShelterCapacityLayer();
@@ -154,7 +162,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, setTime]);
 
-  const layers: any[] = [];
+  const layers: Layer[] = [];
 
   const computedBitmask = useMemo(() => {
     return selectedModes.reduce((acc, modeBit) => acc | modeBit, 0);
@@ -225,7 +233,7 @@ export const MapView: FC<{ arrowTable: arrow.Table }> = ({ arrowTable }) => {
         minZoom={MAP_MIN_ZOOM}
         maxZoom={MAP_MAX_ZOOM}
       >
-        <DeckGLOverlay layers={layers} getTooltip={combinedGetTooltip} />
+        <DeckGLOverlay layers={layers} getTooltip={getTooltip} onClick={handleClick} />
         <NavigationControl position="top-left" />
       </Map>
     </div>

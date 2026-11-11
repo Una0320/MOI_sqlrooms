@@ -27,8 +27,8 @@ export const MainView: React.FC = () => {
   // 畫面上改顯示「此組合無資料」，不渲染地圖。
   const { data, isLoading, error } = useSql({
     query: dataUrl
-      ? `SELECT paths, timestamps, modes FROM read_parquet('${dataUrl}')`
-      : `SELECT CAST(NULL AS FLOAT[]) AS paths, CAST(NULL AS FLOAT[]) AS timestamps, CAST(NULL AS UTINYINT[]) AS modes WHERE false`,
+      ? `SELECT paths, timestamps, modes, n_persons FROM read_parquet('${dataUrl}')`
+      : `SELECT CAST(NULL AS FLOAT[]) AS paths, CAST(NULL AS FLOAT[]) AS timestamps, CAST(NULL AS UTINYINT[]) AS modes, CAST(NULL AS UTINYINT) AS n_persons WHERE false`,
   });
 
   const arrowTable = data?.arrowTable;
