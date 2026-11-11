@@ -75,7 +75,7 @@ const listToArray = (v: unknown): unknown[] => {
   return typeof toJSON === 'function' ? (toJSON.call(v) as unknown[]) : Array.from(v as ArrayLike<unknown>);
 };
 
-type PinnedDatum = { x: number; y: number; text: string };
+type PinnedDatum = { x: number; y: number; text: string; note?: string };
 type MultiLabel = { x: number; y: number; text: string; size: number; color: [number, number, number, number] };
 
 type AgentCache = {
@@ -375,7 +375,7 @@ export const usePointsLayer = (
 
     // 被點擊釘選的 agent：tooltip 卡片 + 一圈白色外框，每幀跟著該 agent 的位置
     // （agent 不在畫面上——還沒出發、已抵達、或運具被取消勾選——就先不畫，拖回時間軸會再出現）
-    const pinned: { x: number; y: number; text: string }[] = [];
+    const pinned: PinnedDatum[] = [];
     if (selDot >= 0 && pinnedAgent !== null) {
       const m = meta[selDot];
       const a = agents[pinnedAgent];
@@ -387,10 +387,16 @@ export const usePointsLayer = (
       } else {
         lines.push(`代表人數: ${a.persons} 人`);
       }
-      if (m.waiting) lines.push(`站上等車: ${m.persons} 人（${m.agentsMerged} 個 agent）`);
+      if (m.waiting) lines.push(`抽樣等車: ${m.persons} 人（${m.agentsMerged} 個 agent）`);
       else if (m.agentsMerged > 1) lines.push(`同車已抽樣乘客: ${m.persons} 人（${m.agentsMerged} 個 agent）`);
       lines.push(`目前路段時速: ${m.segDurationSec > 0 ? `${m.speedKmh.toFixed(1)} km/h` : '—'}${m.statusLabel ? `（${m.statusLabel}）` : ''}`);
-      pinned.push({ x: positions[selDot * 3], y: positions[selDot * 3 + 1], text: lines.join('\n') });
+      pinned.push({
+        x: positions[selDot * 3],
+        y: positions[selDot * 3 + 1],
+        text: lines.join('\n'),
+        // 單一 TextLayer 沒辦法讓某一行換色／縮小，所以註記是卡片正下方另一個小框
+        note: m.waiting ? '僅含抽樣 agent，實際候車請對照 Stop Counts 圖層' : undefined,
+      });
     }
 
     return {
@@ -491,10 +497,33 @@ export const usePointsLayer = (
           getColor: [255, 255, 255, 255],
           getTextAnchor: 'start',
           getAlignmentBaseline: 'bottom',
-          getPixelOffset: [16, -16],
+          // 有註記時主卡片整個上移（註記框佔 -16 的位置），兩框之間留 2px
+          getPixelOffset: (d: PinnedDatum) => (d.note ? [16, -38] : [16, -16]),
+          updateTriggers: { getPixelOffset: [pinnedAgent, time] },
           background: true,
           getBackgroundColor: [30, 30, 40, 235],
           getBorderColor: [255, 255, 255, 120],
+          getBorderWidth: 1,
+          backgroundPadding: [8, 5],
+          backgroundBorderRadius: 4,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          characterSet: 'auto',
+          pickable: false,
+          parameters: { depthCompare: 'always' as const },
+        }),
+        new TextLayer<PinnedDatum>({
+          id: `${LAYER_ID}-pinned-note`,
+          data: pinned.filter((d) => d.note),
+          getPosition: (d: PinnedDatum) => [d.x, d.y, 0],
+          getText: (d: PinnedDatum) => d.note ?? '',
+          getSize: 10,
+          getColor: [170, 175, 190, 255],
+          getTextAnchor: 'start',
+          getAlignmentBaseline: 'bottom',
+          getPixelOffset: [16, -16],
+          background: true,
+          getBackgroundColor: [30, 30, 40, 235],
+          getBorderColor: [255, 255, 255, 70],
           getBorderWidth: 1,
           backgroundPadding: [8, 5],
           backgroundBorderRadius: 4,
