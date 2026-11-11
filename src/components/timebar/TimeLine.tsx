@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
-// 【白色把手已停用，見檔案下方「白色把手停用說明」】恢復時改回下面這一行（要加回 useState）：
-// import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMapStore, DEFAULT_TIME_WINDOW_SEC } from "@/zustand/useMapStore";
 import { useSql } from "@sqlrooms/duckdb";
 import { useShallow } from "@sqlrooms/room-shell";
 import { EVAC_TRANSIT_BIN_SEC, EVAC_TRANSIT_TABLE, useEvacTablesReady } from "@/hooks/useEvacArrivalsView";
 import { AGENT_MODE_TRIP_COLORS } from "@/constants/map";
-import { MIN_BAR_FRACTION, STACK_MODE_BITS, buildTransitGrid, stackBars } from "./transitHistogram";
+import { MIN_BAR_FRACTION, STACK_MODE_BITS, binBars, buildTransitGrid, selectBars } from "./transitHistogram";
 
 const BIN_SIZE = EVAC_TRANSIT_BIN_SEC; // 直方圖粒度:60 秒一格,必須與 evac_transit 表的格寬一致(JS 端再做視覺重取樣)
 const HARD_MAX_SEC = 72 * 3600; // 顯示上限:72:00:00(模擬約到警報後 69 小時、最晚抵達約 46 小時)
@@ -55,6 +53,8 @@ export const TimeLine = () => {
   // 恢復白色把手時取消註解這一行（同時要把 useState 加回上面的 import）：
   // const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const lastValueRef = useRef(timeRange[0]);
+  // 播放頭握把是否正在被拖曳（給握把的外環 / 游標用；isDragging 是 ref，改它不會重新渲染）
+  const [playheadDragging, setPlayheadDragging] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
 
   const { data: queryResult } = useSql<{ t: number; mode: number; persons: number }>({
@@ -72,12 +72,14 @@ export const TimeLine = () => {
     return buildTransitGrid(t, mode, persons, BIN_SIZE);
   }, [duckData]);
 
-  // 每根長條 4 個運具的高度（佔「四運具全選時最大總高」的比例）。切換 selectedModes 只會重跑這裡，不碰 SQL。
-  // 分母固定為全選時的最大值，所以取消某運具時長條會真的變矮。
-  const bars = useMemo(
-    () => (grid ? stackBars(grid, selectedModes, viewTimeRange[0], viewTimeRange[1], BIN_SIZE, MAX_BARS) : null),
-    [grid, selectedModes, viewTimeRange],
+  // 每根長條取「格內 60 秒樣本的平均同時在途人數」（四運具各自平均）。只在資料或檢視範圍變動時算一次。
+  const binned = useMemo(
+    () => (grid ? binBars(grid, viewTimeRange[0], viewTimeRange[1], BIN_SIZE, MAX_BARS) : null),
+    [grid, viewTimeRange],
   );
+  // 每根長條 4 個運具的高度（佔「四運具全選時最大總高」的比例）。切換 selectedModes 只會重跑這裡（typed array 運算），不碰 SQL。
+  // 分母固定為全選時的最大值，所以取消某運具時長條會真的變矮。
+  const bars = useMemo(() => (binned ? selectBars(binned, selectedModes) : null), [binned, selectedModes]);
 
   const getPercent = (val: number) => ((val - viewTimeRange[0]) / (viewTimeRange[1] - viewTimeRange[0])) * 100;
   
@@ -117,16 +119,38 @@ export const TimeLine = () => {
     return rawValue;
   };
 
+  // 圖表繪製區（扣掉外框各 1px）內的時間，讓握把 / 終點線 / 色帶用同一把尺（外框 1px 的差在長時間軸上約 130 秒）
+  const getInnerValueFromClientX = (clientX: number) => {
+    if (!trackRef.current) return 0;
+    const rect = trackRef.current.getBoundingClientRect();
+    const percent = Math.min(1, Math.max(0, (clientX - rect.left - 1) / Math.max(1, rect.width - 2)));
+    return viewTimeRange[0] + percent * (viewTimeRange[1] - viewTimeRange[0]);
+  };
+
+  // 播放頭：窗口終點 = value、起點 = 終點 − 窗口寬度（寬度只由 Time window 按鈕決定，這裡不改）。
+  // 拖曳 / 點擊範圍限制在目前顯示的時間軸內，起點不會小於時間軸起點（0）。Time 與 Evac Rate 都跟著終點走。
+  const seekTo = (value: number) => {
+    const width = timeRange[1] - timeRange[0];
+    const lo = displayTimeRange[0] + width;
+    const hi = Math.max(lo, displayTimeRange[1]);
+    const end = Math.min(hi, Math.max(lo, value));
+    if (end !== timeRange[1]) {
+      setTimeRange([end - width, end]);
+      setTime(end);
+    }
+  };
+
   const handlePointerDown = (e: React.PointerEvent, type: string) => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     setIsPlaying(false); // 拖拉時暫停播放
     e.preventDefault();
     e.stopPropagation();
     isDragging.current = type;
+    if (type === 'playhead') setPlayheadDragging(true);
     // 【白色把手已停用】恢復時取消註解：
     // setActiveHandle(type);
     lastValueRef.current = getValueFromClientX(e.clientX);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handleDisplayTimeRangeMove = (e: React.PointerEvent) => {
@@ -152,8 +176,16 @@ export const TimeLine = () => {
     if (!isDragging.current) return;
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-    const newVal = getValueFromClientX(e.clientX);
+    const clientXRef = e.clientX; // rAF 回呼裡不能再讀 e（React 事件物件）
     animationFrameRef.current = requestAnimationFrame(() => {
+      if (isDragging.current === 'playhead') {
+        seekTo(getInnerValueFromClientX(clientXRef));
+        return;
+      }
+
+      /* 【舊的「整個窗口平移」拖曳——已被播放頭取代】恢復舊窗口本體（見檔案下方說明）時取消註解這一段，
+         並把上面 'playhead' 的分支拿掉（還要在 handlePointerMove 開頭加回 const newVal = getValueFromClientX(e.clientX);，
+         下面兩段被註解的邏輯都會用到 newVal）：
       if (isDragging.current === 'range') {
         const delta = newVal - lastValueRef.current;
         if (Math.abs(delta) >= Number.EPSILON) {
@@ -178,6 +210,7 @@ export const TimeLine = () => {
         }
         return;
       }
+      */
 
       /* 【白色把手已停用——拖曳「改變窗口寬度」的邏輯】詳見檔案下方「白色把手停用說明」。
          上面 'range'（整個窗口平移）的分支沒有動。恢復白色把手時取消註解這一段：
@@ -202,9 +235,10 @@ export const TimeLine = () => {
   const handlePointerUp = (e: React.PointerEvent) => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     isDragging.current = null;
+    setPlayheadDragging(false);
     // 【白色把手已停用】恢復時取消註解：
     // setActiveHandle(null);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
   // 一根長條 = 四個運具區段堆疊（自下而上 WALK、CAR、BUS、RAIL）。沒勾選或人數 0 的區段不畫，上方的自動往下收合；
@@ -239,7 +273,17 @@ export const TimeLine = () => {
   // 畫面渲染邏輯保持完全一樣（只有長條內容改成依運具堆疊）
   return (
     <div className="relative flex w-full touch-none select-none items-center" ref={trackRef}>
-      <div className="relative h-8 w-full grow overflow-hidden bg-[#2B2B38] border border-slate-700 rounded-sm">
+      <div
+        className="relative h-8 w-full grow cursor-pointer overflow-hidden bg-[#2B2B38] border border-slate-700 rounded-sm"
+        // 圖表區任意位置按下 = 跳到該處（以點擊位置為窗口終點），按住不放可以接著拖；跟握把共用 'playhead' 拖曳
+        onPointerDown={(e) => {
+          handlePointerDown(e, 'playhead');
+          seekTo(getInnerValueFromClientX(e.clientX));
+        }}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        data-chart
+      >
         <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
           <div className="absolute inset-0 flex items-end justify-between px-0.5 pb-0">
             {renderBars(true)}
@@ -251,15 +295,18 @@ export const TimeLine = () => {
             {renderBars(false)}
           </div>
         </div>
-        {/* 窗口本體（可整個左右拖曳平移，游標 grab；不能拉寬度）。樣式維持原本的淡灰填色 + 青色細邊；
-            窗口的起點 / 終點由下面兩條「純視覺」的白色細條標示。
-            minWidth 12px：15 分鐘的窗口只佔時間軸約 1%（約 11px），不設最小寬度會很難抓。 */}
-        <div 
-          className="absolute inset-y-0 bg-gray-600/20 border-x border-cyan-500/50 cursor-grab active:cursor-grabbing hover:bg-gray-600/30 transition-colors z-10 backdrop-blur-[0.5px]"
-          style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: 12 }}
-          onPointerDown={(e) => handlePointerDown(e, 'range')}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+        {/* 時間窗口 = 半透明白色色帶（涵蓋 [窗口起點, 窗口終點]，整個圖表高度，約 22% 不透明）＋ 窗口終點的 2px 白色垂直線。
+            純視覺（pointer-events-none）；互動全在下面的播放頭握把，以及整個圖表區的「點擊跳到該處」。
+            窗口寬度仍只由 Time window 按鈕（15 / 30 / 60 分鐘）決定。 */}
+        <div
+          className="pointer-events-none absolute inset-y-0 z-10 bg-white/[0.22]"
+          style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+          data-window-band
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 z-10 w-0.5 bg-white"
+          style={{ left: `${leftPct + widthPct}%`, transform: 'translateX(-50%)' }}
+          data-playhead-line
         />
       </div>
       {/* 最頭 / 最尾的灰色把手（顯示範圍 display-start / display-end）：刻意低調——視覺只是 2px 的細灰線，
@@ -276,28 +323,55 @@ export const TimeLine = () => {
           <span className="pointer-events-none block h-full w-0.5 bg-slate-500/70" />
         </div>
       ))}
-      {/* 窗口起點 / 終點的白色細條——純視覺（pointer-events-none，不能拖曳、不改變寬度；寬度只用 Time window 按鈕）。
-          樣式沿用調細後的白色把手：視覺 4px、比時間軸外框上下各多 4px（h-10）、slate-200、1px 深色描邊。
-          放在灰色把手之後，所以窗口在時間軸最左邊時，白色細條會畫在灰色細線上面，不會被蓋住。 */}
-      {[leftPct, leftPct + widthPct].map((pct, i) => (
+      {/* 播放頭握把：窗口終點（也就是 Time 與 Evac Rate 用的時間）上方的圓形握把。白色圓、2px 深色外圈，直徑 16px，
+          中心比圖表區上緣低 4px（所以略凸出，凸出量 ≤ Timebar 標題列與圖表區之間的 8px 間距，不會蓋到標題，也不增加總高）。
+          透明感應區 28px。hover：放大到約 20px、游標 grab；拖曳中：游標 grabbing、加 2px #DF9651 外環。
+          拖曳改變窗口終點，起點 = 終點 − 窗口寬度，且不小於時間軸起點。放在灰色顯示範圍把手之後（z-30），不會被蓋住。 */}
+      <div
+        className={`group absolute z-30 flex h-7 w-7 items-center justify-center ${playheadDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        style={{ left: `calc(1px + (100% - 2px) * ${(leftPct + widthPct) / 100})`, top: 4, transform: 'translate(-50%, -50%)' }}
+        onPointerDown={(e) => handlePointerDown(e, 'playhead')}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        data-playhead-handle
+      >
         <span
-          key={i}
-          className="pointer-events-none absolute z-30 block h-10 w-1 rounded-sm bg-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]"
-          style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
+          className={`pointer-events-none block h-4 w-4 rounded-full bg-white transition-[transform,box-shadow] ${
+            playheadDragging
+              ? 'scale-125 shadow-[0_0_0_2px_#1e1e24,0_0_0_4px_#DF9651]'
+              : 'shadow-[0_0_0_2px_#1e1e24] group-hover:scale-125'
+          }`}
         />
-      ))}
+      </div>
+      {/* ──────────── 舊的窗口樣式（已被播放頭取代，以註解保留）────────────
+          之前的窗口 = 可整個左右拖曳平移的灰色窗口本體 + 兩條「純視覺」的白色細條（窗口起點 / 終點）；
+          現在換成：半透明白色色帶 + 終點白線 + 圓形播放頭握把 + 點擊跳轉（見上面）。窗口寬度仍只由 Time window 按鈕決定。
+          如何恢復舊樣式：
+            1. 把上面的色帶 / 終點線 / 播放頭握把 JSX 換回下面註解裡的「窗口本體」與「白色細條」；
+            2. 圖表區容器（data-chart）拿掉 onPointerDown / onPointerMove / onPointerUp（點擊跳轉）；
+            3. handlePointerMove 裡把 'playhead' 分支換回被註解的 'range' 分支（整個窗口平移）。
+          舊窗口本體（淡灰填色 + 青色細邊，游標 grab，onPointerDown 走 'range'）：
+            <div className="absolute inset-y-0 bg-gray-600/20 border-x border-cyan-500/50 cursor-grab active:cursor-grabbing hover:bg-gray-600/30 transition-colors z-10 backdrop-blur-[0.5px]"
+                 style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: 12 }}
+                 onPointerDown={(e) => handlePointerDown(e, 'range')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} />
+          舊的白色細條（純視覺，視覺 4px、比圖表區上下各多 4px）：
+            {[leftPct, leftPct + widthPct].map((pct, i) => (
+              <span key={i} className="pointer-events-none absolute z-30 block h-10 w-1 rounded-sm bg-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]"
+                    style={{ left: `${pct}%`, transform: 'translateX(-50%)' }} />
+            ))}
+      */}
       {/* ──────────── 白色把手停用說明 ────────────
           為什麼停用：窗口寬度現在只用 Time window 按鈕（15 / 30 / 60 分鐘）調整；
           「按鈕」與「拖曳把手」兩種調整方式並存太複雜，而且在時間軸起點處，白色把手會和灰色的顯示範圍把手重疊。
           停用範圍：只有下面這兩個白色把手（窗口起點 / 終點）與它們的「改變窗口寬度」拖曳邏輯。
-          沒有動到：窗口本體（整個窗口左右平移，handlePointerDown(e, 'range')）、灰色的顯示範圍把手（display-start / display-end）、
+          沒有動到：灰色的顯示範圍把手（display-start / display-end）、
           Time window 按鈕。
           如何恢復（四處一起恢復）：
             1. 取消註解下面這段 JSX（兩個白色把手的 .map）；
             2. 取消註解 handlePointerMove 裡標示「白色把手已停用」的那一段（nextStart / nextEnd 的計算與 setTimeRange）；
             3. 取消註解 const [activeHandle, setActiveHandle] = useState(...)，以及 handlePointerDown / handlePointerUp 裡
                被註解的 setActiveHandle(type) / setActiveHandle(null)；
-            4. 檔案最上面的 import 改回含 useState 的那一行。
+            4. （import 已含 useState，不用再改；注意播放頭用的 state 叫 playheadDragging，別撞名。）
           恢復時把手為已調細的樣式（視覺約 4px、感應區 12px 以上）：視覺細條 w-1（4px），外層透明感應區 w-3（12px），
           hover 或拖曳中從 slate-200 變純白並加外發光；原本（調細之前）是 8px 寬、帶 1px 深色邊。 */}
       {/*
