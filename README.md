@@ -34,7 +34,7 @@
 | **即時直方圖 (Histogram)**| DuckDB SQL 差分聚合 (`evac_transit`) | 時間軸上每個時間格的「在途人數」，依運具堆疊，並隨右側勾選的運具即時增減（不重打 SQL） |
 | **情境 / 路網管制** | 情境分頁（大規模撤離／混合避難／優先疏散）+ Network Control 開關（開啟後改讀 ctrl 場次並出現 Road Control 圖層），由 manifest 決定每個組合有哪些檔案 | 沒資料的圖層 disabled 並提示，不隱藏 |
 | **完成率 (Evac Rate)** | 左上角 `Evac Rate`（標籤固定這個寫法），累計值、二分搜尋查表；人數口徑（依 `n_persons` 加權），基於軌跡抽樣的 agent | 看撤離進度隨時間的變化 |
-| **分運具完成率 (Evac Rate by Mode)** | 右上折線圖（`@sqlrooms/mosaic`，與主畫面共用同一個 DuckDB-WASM 連線，lazy 載入）：WALK／CAR／BUS／RAIL 各一條 + 虛線「全部」（與左上 Evac Rate 一致），圖上有播放位置線。每個 agent 依搭乘最遠的運具歸類（RAIL > BUS > CAR > WALK），與地圖的逐段運具過濾語意不同。資料來自 `evac_arrivals` / `evac_curve` / `evac_curve_all` 三張 DuckDB 表（每個情境載入時建立一次；用 TABLE 而非 VIEW，避免重複掃描遠端 parquet） | 看各運具的撤離進度；點圖例或折線即可切換地圖上的運具 |
+| **分運具完成率 (Evac Rate by Mode)** | 右上折線圖（`@sqlrooms/mosaic`，與主畫面共用同一個 DuckDB-WASM 連線，lazy 載入）：WALK／CAR／BUS／RAIL 各一條 + 虛線「全部」（與左上 Evac Rate 一致），圖上有播放位置線。每個 agent 依搭乘最遠的運具歸類（RAIL > BUS > CAR > WALK），與地圖的逐段運具過濾語意不同。資料來自 4 張 DuckDB 表（每個情境載入時建立一次，軌跡 parquet 只掃一次；用 TABLE 而非 VIEW，避免重複掃描遠端 parquet）：`evac_arrivals`（每個 agent 一列：運具、出發與抵達時間、人數、連續同運具區間；左上 headline Evac Rate 直接讀它，也是其餘三張表的來源）、`evac_curve`（每個運具每 60 秒的累計完成率；折線圖的四條運具線）、`evac_curve_all`（全部 agent 的累計完成率；折線圖的虛線「全部」與 X 軸長度）、`evac_transit`（每個運具的在途人數階梯函數；Timeline 直方圖讀它，不屬於這個折線圖） | 看各運具的撤離進度；點圖例或折線即可切換地圖上的運具 |
 | **站點候車人潮聚合** | supercluster 依 zoom 動態分群 + 圈內數字標示 | 縮小看全貌、放大看單站細節，不會被上千個重疊圓圈洗版 |
 | **面板配置** | 右上 Network Control 滑動開關 + Evac Rate by Mode 折線圖（取代原本的 Mobility Modes 勾選面板；圖例與折線都可以點來切換運具）+ Layers（Trips／Heatmap／OD Arc／Shelter Capacity／Road Service／Stop Counts，寬 284px、可收合）；左上 Time（HH:MM:SS）／Zoom／Evac Rate（只有完成率的數值是 `#DF9651`）；左下圖例堆疊（Shelter Capacity 在上、Road Service LOS 固定在最下）；下方 Timeline 約 103px 高，與圖例底邊對齊（圖例顯示時 Timeline 左緣右移到圖例右側）；所有面板統一 1px 半透明淺色邊線 + backdrop-blur | 面板精簡不擋地圖；沒資料的圖層 disabled 並提示 |
 | **圖層 Tooltip** | Stop-Counts 候車泡泡／Shelter-Capacity 飽和率圈都可 hover | 不用另外查表就能核對站點候車人數與避難所收容飽和度 |
@@ -158,7 +158,7 @@ yarn preview  # 本機預覽 build 出來的 dist/
 
 - **在途** = 已出發（`departure_s <= t`）且尚未抵達（`t <` 最後一個時間戳），**包含停在站上等車的人**；單位是**人數**（`n_persons` 加權），不是 agent 數。每根長條取「**格內平均同時在途人數**」：先以 60 秒解析度算出各運具的瞬時在途人數，再對長條涵蓋的樣本取平均（畫面最多約 50 根長條）；不用格起點的瞬時值，是因為第一根（t=0）幾乎還沒有人出發，會嚴重低估。
 - 每根長條由 WALK / CAR / BUS / RAIL 四段**堆疊**（自下而上，顏色同地圖）。運具是這個人**當下那一段**的運具（停在站上等車的靜止段標的是要搭的車），所以四段加總 = 在途總人數；這與**地圖的逐段過濾一致**，而與 Evac Rate by Mode 折線圖「每個 agent 只算搭乘最遠的運具」**不同**，兩者用意不同。
-- 取消勾選的運具不畫，上方區段往下收合。高度的分母固定為「四運具全選時最大的時間格總人數」，不隨勾選改變，所以取消運具時長條會真的變矮；全部取消時直方圖是空的。整根低於容器 5% 時等比例放大到 5%，非零區段至少 1 px。
+- 取消勾選的運具不畫，上方區段往下收合。高度的分母固定為「全選時最大的格內平均總人數」，不隨勾選改變，所以取消運具時長條會真的變矮；全部取消時直方圖是空的。整根低於容器 5% 時等比例放大到 5%，非零區段至少 1 px。
 - 資料來自 `evac_transit` 表，與 Evac Rate、折線圖共用同一次 parquet 掃描（見 CLAUDE.md）。這是**抽樣軌跡**的人數，不是全體統計。
 
 ## ⏱ Timeline 時間窗口（播放頭）
@@ -167,6 +167,8 @@ yarn preview  # 本機預覽 build 出來的 dist/
 - 窗口**寬度仍只由 Time window 按鈕（15 / 30 / 60 分鐘）決定**，不再有調寬把手；舊把手與舊窗口樣式的程式碼以註解保留在 `TimeLine.tsx`，內有恢復方式。
 - 拖曳握把改變窗口終點（起點 = 終點 − 窗口寬度，不小於 0）；在圖表任意位置按一下可直接跳到該處（以點擊位置為窗口終點）；範圍限制在目前顯示的時間軸內。拖曳或點擊時會暫停播放。
 - hover 握把會放大、游標為 grab；拖曳中游標為 grabbing，握把多一圈 `#DF9651` 外環。
+- **切換 Time window 寬度（15 / 30 / 60 分鐘）時，窗口終點（Time）不動**，起點 = 終點 − 窗口寬度，所以播放頭、Time、Evac Rate、Points 與 Trips 顯示的時間都不會跳。邊界：終點小於窗口寬度時，起點設 0、終點設為窗口寬度（此時終點才會被推動）；終點也不會超過時間軸末端。
+- 這裡的「播放頭」是 Timeline 的時間窗口；Evac Rate by Mode 折線圖上另有一條「播放位置線」，兩者是不同的東西。
 
 ## 📝 TODO
 

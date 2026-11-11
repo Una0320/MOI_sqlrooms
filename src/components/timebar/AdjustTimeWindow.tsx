@@ -5,9 +5,12 @@ import { CollapsibleChoice } from "./CollapsibleChoice";
 const WINDOW_OPTIONS = [15, 30, 60].map((m) => ({ value: m, label: `${m} min` }));
 
 export const AdjustTimeWindow = () => {
-  // 從 timeRange 寬度反推目前是哪個預設值：拖曳把手調出非預設寬度時，按鈕顯示 Custom
-  // ⚠ Custom 的顯示邏輯保留不刪：但目前時間窗口的白色把手已停用（見 TimeLine.tsx），窗口寬度只能用這個按鈕的
-  // 15 / 30 / 60 分鐘切換，因此不會出現非預設寬度，Custom 不會被觸發。恢復白色把手後它才會再出現。
+  // 從 timeRange 寬度反推目前是哪個預設值；寬度不是 15 / 30 / 60 分鐘時按鈕顯示 Custom。
+  // 窗口寬度只由這個按鈕決定：Timeline 的播放頭（拖曳 / 點擊）只改窗口終點、不改寬度，播放也保持寬度，
+  // setTimeWindow 則固定終點、起點 = 終點 − 寬度。所以正常操作不會出現非預設寬度，Custom 實際上不會被觸發。
+  // 僅剩的罕見路徑：用灰色把手把顯示範圍收得比「新選的寬度」還窄、且終點 < 新寬度時選這個寬度，
+  // setTimeWindow 會把終點夾在顯示範圍末端，實際寬度就小於所選值 → Custom；另外，恢復舊的白色調寬把手後它也會再出現。
+  // Custom 的顯示邏輯保留不刪。
   const widthMin = useMapStore((s) => Math.round((s.timeRange[1] - s.timeRange[0]) / 60));
   const setTimeWindow = useMapStore((s) => s.setTimeWindow);
 
