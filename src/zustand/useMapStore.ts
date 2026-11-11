@@ -64,10 +64,17 @@ export const useMapStore = create<MapState>((set) => ({
   setTimeRange: (range) => set({ timeRange: range }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   setTimeScale: (scale) => set({ timeScale: scale }),
-  // 保持起點不動，把視窗終點改成 起點 + sec（不超過資料範圍），地圖光束時間跟著終點
+  // 窗口終點（= time，播放頭所在處）不動，起點 = 終點 − 窗口寬度，所以切換 15/30/60 時 Time、播放頭、Evac Rate、
+  // Points / Trips 顯示的時間都不會跳。邊界：終點 < 窗口寬度時起點設 0、終點設為窗口寬度（此時終點才會被推動）；
+  // 終點也不超過目前顯示的時間軸末端。
   setTimeWindow: (sec) => set((state) => {
-    const start = state.timeRange[0];
-    const end = Math.min(start + sec, state.displayTimeRange[1]);
+    let end = state.timeRange[1];
+    let start = end - sec;
+    if (start < 0) {
+      start = 0;
+      end = sec;
+    }
+    end = Math.min(end, Math.max(state.displayTimeRange[1], start));
     return { timeRange: [start, end], time: end };
   }),
   toggleMode: (modeBit) => set((state) => {
